@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Windows.Threading;
-using CryptoRtd;
+using RabbitRtd;
 
 namespace TestApp
 {
