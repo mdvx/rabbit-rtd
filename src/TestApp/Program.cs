@@ -26,16 +26,7 @@ namespace TestApp
 
             Sub("BTC-USD", "BID");
             Sub("BTC-USD", "ASK");
-            Sub("BTC-USD", "LAST_PRICE");
-            Sub("BTC-USD", "LAST_SIZE");
-            Sub("BTC-USD", "LAST_SIDE");
             
-            Sub("ETH-USD", "BID");
-            Sub("ETH-USD", "ASK");
-            Sub("ETH-USD", "LAST_PRICE");
-            Sub("ETH-USD", "LAST_SIZE");
-            Sub("ETH-USD", "LAST_SIDE");
-
             // Start up a Windows message pump and spin forever.
             Dispatcher.Run();
         }
@@ -47,7 +38,7 @@ namespace TestApp
             
             var a = new[]
                     {
-                        "GDAX",
+                        "rabbit",
                         instrument,
                         field
                     };

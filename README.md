@@ -1,9 +1,5 @@
-# crypto-rtd
-Excel RTD server sourcing GDAX ticker data via websockets
-
-
-The code is using the old .NET Framework 4.0 in order to allow it
-to run on Windows 7 machines.
+# rabbit-rtd
+Excel RTD server sourcing data from Rabbit-MQ
 
 
 ## Installation
@@ -22,21 +18,8 @@ to run on Windows 7 machines.
 Once the RTD server has been installed, you can use it from Excel via the RTD macro.
 This is the syntax:
 
-`=RTD("crypto",, "GDAX", instrument, field)`
+`=RTD("rabbit",, "TOPIC", "FIELD", filter1, filter2)`
 
-*All* currency pairs traded on GDAX are supported, including the main ones:
-* BTC-USD
-* ETH-USD
-* LTC-USD
-* ETH-BTC
-* LTC-BTC
 
-You can use the following fields:
-* BID - best bid price
-* ASK - best ask price
-* LAST_PRICE - last traded price
-* LAST_SIZE - last traded size
-* LAST_SIDE - last trades side (buy or sell)
-
-![Excel screenshot](doc/crypto-rtd-excel.png)
+<!-- ![Excel screenshot](doc/crypto-rtd-excel.png) -->
 

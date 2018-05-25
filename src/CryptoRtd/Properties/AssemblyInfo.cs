@@ -5,14 +5,14 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("GdaxRtdServer")]
-[assembly: AssemblyProduct("GdaxRtdServer")]
-[assembly: AssemblyCopyright("Copyright ©  2017 Filip Frącz")]
+[assembly: AssemblyTitle("Rabbit MQ-RTD")]
+[assembly: AssemblyProduct("rabbit-rtd")]
+[assembly: AssemblyCopyright("Copyright ©  2018 Marc Deveaux")]
 
 [assembly: ComVisible(true)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("95f50618-aa6c-4551-8cd7-49e04c0d5ce9")]
+[assembly: Guid("00C4E13E-814B-4FA8-8057-78AAB78AF960")]
 
 // Version information for an assembly consists of the following four values:
 //
