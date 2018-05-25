@@ -4,61 +4,44 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
 
-namespace CryptoRtd
+namespace RabbitRtd
 {
     [
-        Guid("982325F9-B1F3-4D12-9618-76A1C8B950B2"),
-        
-        //
+        Guid("F4B38467-3B63-49AC-8898-D09B2F68235A"),
         // This is the string that names RTD server.
         // Users will use it from Excel: =RTD("crypto",, ....)
-        //
-        ProgId("crypto")
+        ProgId("rabbit")
     ]
-    public class CryptoRtdServer : IRtdServer
+    public class RabbitRtdServer : IRtdServer
     {
         IRtdUpdateEvent _callback;
         DispatcherTimer _timer;
         readonly SubscriptionManager _subMgr;
 
 
-        // Oldie but goodie. WebSocket library that works on .NET 4.0
-        GdaxWebSocketClient _socket;
-
-        public CryptoRtdServer ()
+        public RabbitRtdServer ()
         {
             _subMgr = new SubscriptionManager();
-            _socket = new GdaxWebSocketClient(new Uri("wss://ws-feed.gdax.com"));
         }
-
-        //
         // Excel calls this. It's an entry point. It passes us a callback
         // structure which we save for later.
-        //
         int IRtdServer.ServerStart (IRtdUpdateEvent callback)
         {
             _callback = callback;
 
-            //
             // We will throttle out updates so that Excel can keep up.
             // It is also important to invoke the Excel callback notify
             // function from the COM thread. System.Windows.Threading' 
             // DispatcherTimer will use COM thread's message pump.
-            //
             _timer = new DispatcherTimer();
             _timer.Interval = TimeSpan.FromSeconds(0.5);
             _timer.Tick += TimerElapsed;
             _timer.Start();
 
-            _socket.Start();
-            _socket.MessageReceived += OnWebSocketMessageReceived;
-
             return 1;
         }
 
-        //
         // Excel calls this when it wants to shut down RTD server.
-        //
         void IRtdServer.ServerTerminate ()
         {
             if (_timer != null)
@@ -66,19 +49,11 @@ namespace CryptoRtd
                 _timer.Stop();
                 _timer = null;
             }
-
-            if (_socket != null)
-            {
-                _socket.Disconnect();
-                _socket = null;
-            }
         }
 
-        //
         // Excel calls this when it wants to make a new topic subscription.
         // topicId becomes the key representing the subscription.
         // String array contains any aux data user provides to RTD macro.
-        //
         object IRtdServer.ConnectData (int topicId,
                                        ref Array strings,
                                        ref bool newValues)
@@ -104,16 +79,13 @@ namespace CryptoRtd
                         field);
                 }
 
-                SubscribeGdaxWebSocketToTicker(instrument.ToUpperInvariant());
                 return SubscriptionManager.UninitializedValue;
             }
 
-            return "ERROR: Expected: origin, vendor, instrument, field";
+            return "ERROR: Expected: rabbit, queue, topic, field";
         }
 
-        //
         // Excel calls this when it wants to cancel subscription.
-        //
         void IRtdServer.DisconnectData (int topicId)
         {
             lock (_subMgr)
@@ -122,17 +94,13 @@ namespace CryptoRtd
             }
         }
 
-        //
         // Excel calls this every once in a while.
-        //
         int IRtdServer.Heartbeat ()
         {
             return 1;
         }
 
-        //
         // Excel calls this to get changed values. 
-        //
         Array IRtdServer.RefreshData (ref int topicCount)
         {
             var updates = GetUpdatedValues();
@@ -151,10 +119,8 @@ namespace CryptoRtd
             return data;
         }
         
-        //
         // Helper function which checks if new data is available and,
         // if so, notifies Excel about it.
-        //
         private void TimerElapsed (object sender, EventArgs e)
         {
             bool wasMarketDataUpdated;
@@ -169,72 +135,6 @@ namespace CryptoRtd
                 // Notify Excel that Market Data has been updated
                 _callback.UpdateNotify();
             }
-        }
-
-        private void OnWebSocketMessageReceived (object sender, WebSocketMessageEventArgs e)
-        {
-            // Assume the incoming string represents a JSON message.
-            // Parse it, and access it via "dynamic" variable (no ["field"] and casts necessary).
-
-            dynamic jobj = e.Message;
-
-            if (jobj.type == "ticker")
-            {
-                string prod = jobj.product_id;
-                string bid = jobj.best_bid;
-                string ask = jobj.best_ask;
-                string ltp = jobj.price;
-                string ltq = jobj.last_size;
-                string side = jobj.side;
-
-                lock (_subMgr)
-                {
-                    _subMgr.Set(
-                        SubscriptionManager.FormatPath(
-                            origin: String.Empty,
-                            vendor: String.Empty,
-                            instrument: prod,
-                            field: "BID"),
-                        bid);
-
-                    _subMgr.Set(
-                        SubscriptionManager.FormatPath(
-                            origin: String.Empty,
-                            vendor: String.Empty,
-                            instrument: prod,
-                            field: "ASK"),
-                        ask);
-
-                    _subMgr.Set(
-                        SubscriptionManager.FormatPath(
-                            origin: String.Empty,
-                            vendor: String.Empty,
-                            instrument: prod,
-                            field: "LAST_SIZE"),
-                        ltq);
-
-                    _subMgr.Set(
-                        SubscriptionManager.FormatPath(
-                            origin: String.Empty,
-                            vendor: String.Empty,
-                            instrument: prod,
-                            field: "LAST_PRICE"),
-                        ltp);
-                    
-                    _subMgr.Set(
-                        SubscriptionManager.FormatPath(
-                            origin: String.Empty,
-                            vendor: String.Empty,
-                            instrument: prod,
-                            field: "LAST_SIDE"),
-                        side);
-                }
-            }
-        }
-
-        private void SubscribeGdaxWebSocketToTicker (string instrument)
-        {
-            _socket.SubscribeTickers(instrument);
         }
 
         List<UpdatedValue> GetUpdatedValues ()

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26430.12
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoRtd", "CryptoRtd\CryptoRtd.csproj", "{95F50618-AA6C-4551-8CD7-49E04C0D5CE9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RabbitRtd", "RabbitRtd\RabbitRtd.csproj", "{95F50618-AA6C-4551-8CD7-49E04C0D5CE9}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestApp", "TestApp\TestApp.csproj", "{34E6D830-BD3F-4A32-9DDD-5EE1C5CBB6A2}"
 EndProject
@@ -24,5 +24,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {54D8818B-6FE0-4547-8A20-EE90D3EEC06F}
 	EndGlobalSection
 EndGlobal

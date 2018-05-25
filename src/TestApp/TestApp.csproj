@@ -49,13 +49,13 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\CryptoRtd\CryptoRtd.csproj">
-      <Project>{95f50618-aa6c-4551-8cd7-49e04c0d5ce9}</Project>
-      <Name>CryptoRtd</Name>
-    </ProjectReference>
+    <None Include="app.config" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="app.config" />
+    <ProjectReference Include="..\RabbitRtd\RabbitRtd.csproj">
+      <Project>{95f50618-aa6c-4551-8cd7-49e04c0d5ce9}</Project>
+      <Name>RabbitRtd</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -21,7 +21,7 @@ namespace TestApp
 
         void Run ()
         {
-            _rtd = new CryptoRtdServer();
+            _rtd = new RabbitRtdServer();
             _rtd.ServerStart(this);
 
             Sub("BTC-USD", "BID");

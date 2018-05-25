@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace CryptoRtd
+namespace RabbitRtd
 {
     //
     // We provide definition of the RTD interfaces used by Excel

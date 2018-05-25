@@ -7,8 +7,8 @@
     <ProjectGuid>{95F50618-AA6C-4551-8CD7-49E04C0D5CE9}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>CryptoRtd</RootNamespace>
-    <AssemblyName>CryptoRtd</AssemblyName>
+    <RootNamespace>RabbitRtd</RootNamespace>
+    <AssemblyName>RabbitRtd</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <LangVersion>5</LangVersion>
@@ -75,8 +75,7 @@
   <ItemGroup>
     <Compile Include="ExcelComInterfaces.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="WebSocketClient.cs" />
-    <Compile Include="CryptoRtdServer.cs" />
+    <Compile Include="RabbitRtdServer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
