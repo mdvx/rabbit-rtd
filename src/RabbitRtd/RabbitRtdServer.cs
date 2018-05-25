@@ -1,7 +1,11 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows.Threading;
 
 namespace RabbitRtd
@@ -33,10 +37,39 @@ namespace RabbitRtd
             // It is also important to invoke the Excel callback notify
             // function from the COM thread. System.Windows.Threading' 
             // DispatcherTimer will use COM thread's message pump.
-            _timer = new DispatcherTimer();
-            _timer.Interval = TimeSpan.FromSeconds(0.5);
-            _timer.Tick += TimerElapsed;
-            _timer.Start();
+            //_timer = new DispatcherTimer();
+            //_timer.Interval = TimeSpan.FromSeconds(0.5);
+            //_timer.Tick += TimerElapsed;
+            //_timer.Start();
+
+            var factory = new ConnectionFactory() { HostName = "localhost" };
+            using (var connection = factory.CreateConnection())
+            using (var channel = connection.CreateModel())
+            {
+                channel.ExchangeDeclare(exchange: "BINANCE", type: "fanout");
+
+                var queueName = channel.QueueDeclare().QueueName;
+                channel.QueueBind(queue: queueName,
+                                  exchange: "BINANCE",
+                                  routingKey: "");
+
+                Console.WriteLine(" [*] Waiting for logs.");
+
+                var consumer = new EventingBasicConsumer(channel);
+                consumer.Received += (model, ea) =>
+                {
+                    var body = ea.Body;
+                    var json = Encoding.UTF8.GetString(body);
+
+                    //dynamic jsonResponse = JsonConvert.DeserializeObject(json);
+
+                    _subMgr.Set(model.ToString(), json);
+
+                };
+                channel.BasicConsume(queue: queueName,
+                                     autoAck: true,
+                                     consumer: consumer);
+            }
 
             return 1;
         }
