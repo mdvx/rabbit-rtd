@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Threading;
 
 namespace RabbitRtd
@@ -37,37 +39,10 @@ namespace RabbitRtd
             // It is also important to invoke the Excel callback notify
             // function from the COM thread. System.Windows.Threading' 
             // DispatcherTimer will use COM thread's message pump.
-            //_timer = new DispatcherTimer();
-            //_timer.Interval = TimeSpan.FromSeconds(0.5);
-            //_timer.Tick += TimerElapsed;
-            //_timer.Start();
-
-            var factory = new ConnectionFactory() { HostName = "localhost" };
-            using (var connection = factory.CreateConnection())
-            using (var channel = connection.CreateModel())
-            {
-                channel.ExchangeDeclare(exchange: "BINANCE", type: "fanout");
-
-                var queueName = channel.QueueDeclare().QueueName;
-                channel.QueueBind(queue: queueName,
-                                  exchange: "BINANCE",
-                                  routingKey: "");
-
-                var consumer = new EventingBasicConsumer(channel);
-                consumer.Received += (model, ea) =>
-                {
-                    var body = ea.Body;
-                    var json = Encoding.UTF8.GetString(body);
-
-                    //dynamic jsonResponse = JsonConvert.DeserializeObject(json);
-
-                    _subMgr.Set(model.ToString(), json);
-
-                };
-                channel.BasicConsume(queue: queueName,
-                                     autoAck: true,
-                                     consumer: consumer);
-            }
+            _timer = new DispatcherTimer();
+            _timer.Interval = TimeSpan.FromMilliseconds(50); // this needs to be very frequent
+            _timer.Tick += TimerElapsed;
+            _timer.Start();
 
             return 1;
         }
@@ -92,28 +67,64 @@ namespace RabbitRtd
             newValues = true;
 
             // We assume 3 strings: Origin, Instrument, Field
-            if (strings.Length == 3)
+            if (strings.Length == 4)
             {
                 // Crappy COM-style arrays...
-                string origin = String.Empty; //strings.GetValue(0).ToString();
-                string instrument = strings.GetValue(1).ToString();
-                string field = strings.GetValue(2).ToString();
-                
+                string host = strings.GetValue(0).ToString();
+                string exchange = strings.GetValue(1).ToString();
+                string instrument = strings.GetValue(2).ToString();
+                string field = strings.GetValue(3).ToString();
+
                 lock (_subMgr)
                 {
                     // Let's use Empty strings for now
                     _subMgr.Subscribe(
                         topicId,
-                        origin,
-                        String.Empty,
+                        exchange,
                         instrument, 
                         field);
                 }
 
+                CancellationTokenSource cts = new CancellationTokenSource();
+                Task.Run(() => SubscribeRabbit(host, exchange, instrument, field, cts));
+
                 return SubscriptionManager.UninitializedValue;
             }
 
-            return "ERROR: Expected: rabbit, queue, topic, field";
+            return "ERROR: Expected: host, queue, topic, field";
+        }
+
+        private void SubscribeRabbit(string host, string exchange, string routingKey, string field, CancellationTokenSource cts)
+        {
+            var rtdTopicString = SubscriptionManager.FormatPath(exchange, routingKey, field);
+
+            var factory = new ConnectionFactory() { HostName = host };
+            using (var connection = factory.CreateConnection())
+            using (var channel = connection.CreateModel())
+            {
+                channel.ExchangeDeclare(exchange: exchange, type: "fanout");
+
+                var queueName = channel.QueueDeclare().QueueName;
+                channel.QueueBind(queue: queueName,
+                                  exchange: exchange,
+                                  routingKey: routingKey);
+
+                var consumer = new EventingBasicConsumer(channel);
+                consumer.Received += (model, ea) =>
+                {
+                    var json = Encoding.UTF8.GetString(ea.Body);
+                    var data = JsonConvert.DeserializeObject<Dictionary<String,String>>(json);
+
+                    _subMgr.Set(rtdTopicString, data[field]);
+
+                };
+                channel.BasicConsume(queue: queueName,
+                                     autoAck: true,
+                                     consumer: consumer);
+
+                while (!cts.Token.IsCancellationRequested)
+                    Thread.Sleep(1000);
+            }
         }
 
         // Excel calls this when it wants to cancel subscription.
@@ -141,7 +152,7 @@ namespace RabbitRtd
 
             for (int i = 0; i < topicCount; ++i)
             {
-                UpdatedValue info = updates[i];
+                SubscriptionManager.UpdatedValue info = updates[i];
 
                 data[0, i] = info.TopicId;
                 data[1, i] = info.Value;
@@ -168,7 +179,7 @@ namespace RabbitRtd
             }
         }
 
-        List<UpdatedValue> GetUpdatedValues ()
+        List<SubscriptionManager.UpdatedValue> GetUpdatedValues ()
         {
             lock (_subMgr)
             {
@@ -177,127 +188,4 @@ namespace RabbitRtd
         }
     }
 
-
-    struct UpdatedValue
-    {
-        public int TopicId { get; private set; }
-        public object Value { get; private set; }
-
-        public UpdatedValue (int topicId, string value) : this()
-        {
-            TopicId = topicId;
-
-            Decimal dec;
-            if (Decimal.TryParse(value, out dec))
-                Value = dec;
-            else 
-                Value = value;
-        }
-    }
-
-
-    class SubscriptionManager
-    {
-        public static readonly string UninitializedValue = "<?>";
-        
-        readonly Dictionary<string, SubInfo> _subByPath;
-        readonly Dictionary<int, SubInfo> _subByTopicId;
-
-        public SubscriptionManager ()
-        {
-            _subByPath = new Dictionary<string, SubInfo>();
-            _subByTopicId = new Dictionary<int, SubInfo>();
-        }
-
-        public bool IsDirty { get; private set; }
-
-        public void Subscribe (int topicId, string origin, string vendor, string instrument, string field)
-        {
-            var subInfo = new SubInfo(
-                topicId,
-                FormatPath(origin, vendor, instrument, field));
-
-            _subByTopicId.Add(topicId, subInfo);
-            _subByPath.Add(subInfo.Path, subInfo);
-        }
-
-        public void Unsubscribe (int topicId)
-        {
-            SubInfo subInfo;
-            if (_subByTopicId.TryGetValue(topicId, out subInfo))
-            {
-                _subByTopicId.Remove(topicId);
-                _subByPath.Remove(subInfo.Path);
-            }
-        }
-
-        public List<UpdatedValue> GetUpdatedValues ()
-        {
-            var updated = new List<UpdatedValue>(_subByTopicId.Count);
-
-            // For simplicity, let's just do a linear scan
-            foreach (var subInfo in _subByTopicId.Values)
-            {
-                if (subInfo.IsDirty)
-                {
-                    updated.Add(new UpdatedValue(subInfo.TopicId, subInfo.Value));
-                    subInfo.IsDirty = false;
-                }
-            }
-
-            IsDirty = false;
-
-            return updated;
-        }
-
-        public void Set(string path, string value)
-        {
-            SubInfo subInfo;
-            if (_subByPath.TryGetValue(path, out subInfo))
-            {
-                if (value != subInfo.Value)
-                {
-                    subInfo.Value = value;
-                    IsDirty = true;
-                }
-            }
-        }
-
-        public static string FormatPath (string origin, string vendor, string instrument, string field)
-        {
-            return string.Format("{0}/{1}/{2}/{3}",
-                                 origin.ToUpperInvariant(),
-                                 vendor.ToUpperInvariant(),
-                                 instrument.ToUpperInvariant(),
-                                 field.ToUpperInvariant());
-        }
-
-        class SubInfo
-        {
-            public int TopicId { get; private set; }
-            public string Path { get; private set; }
-
-            private string _value;
-
-            public string Value
-            {
-                get { return _value; }
-                set
-                {
-                    _value = value;
-                    IsDirty = true;
-                }
-            }
-
-            public bool IsDirty { get; set; }
-
-            public SubInfo (int topicId, string path)
-            {
-                TopicId = topicId;
-                Path = path;
-                Value = UninitializedValue;
-                IsDirty = false;
-            }
-        }
-    }
 }
