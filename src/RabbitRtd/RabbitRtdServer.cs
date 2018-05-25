@@ -53,8 +53,6 @@ namespace RabbitRtd
                                   exchange: "BINANCE",
                                   routingKey: "");
 
-                Console.WriteLine(" [*] Waiting for logs.");
-
                 var consumer = new EventingBasicConsumer(channel);
                 consumer.Received += (model, ea) =>
                 {
