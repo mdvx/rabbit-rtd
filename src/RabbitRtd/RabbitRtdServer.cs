@@ -79,31 +79,26 @@ namespace RabbitRtd
                 // Crappy COM-style arrays...
                 string host = strings.GetValue(0).ToString();
                 string exchange = strings.GetValue(1).ToString();
-                string instrument = strings.GetValue(2).ToString();
+                string routingKey = strings.GetValue(2).ToString();
                 string field = strings.GetValue(3).ToString();
 
-                lock (_subMgr)
-                {
-                    // Let's use Empty strings for now
-                    _subMgr.Subscribe(
-                        topicId,
-                        exchange,
-                        instrument, 
-                        field);
-                }
-
                 CancellationTokenSource cts = new CancellationTokenSource();
-                Task.Run(() => SubscribeRabbit(host, exchange, instrument, field, cts));
+                Task.Run(() => SubscribeRabbit(topicId, host, exchange, routingKey, field, cts));
 
                 return SubscriptionManager.UninitializedValue;
             }
 
-            return "ERROR: Expected: host, queue, topic, field";
+            return "ERROR: Expected: host, exchange, routingKey, field";
         }
 
-        private void SubscribeRabbit(string host, string exchange, string routingKey, string field, CancellationTokenSource cts)
+        private void SubscribeRabbit(int topicId, string host, string exchange, string routingKey, string field, CancellationTokenSource cts)
         {
-            var rtdTopicString = SubscriptionManager.FormatPath(exchange, routingKey, field);
+            lock (_subMgr)
+            {
+                if (_subMgr.Subscribe(topicId, host, exchange, routingKey, field))
+                    return; // already subscribed 
+            }
+
 
             var factory = new ConnectionFactory() { HostName = host };
             using (var connection = factory.CreateConnection())
@@ -122,8 +117,14 @@ namespace RabbitRtd
                     var json = Encoding.UTF8.GetString(ea.Body);
                     var data = JsonConvert.DeserializeObject<Dictionary<String,String>>(json);
 
-                    _subMgr.Set(rtdTopicString, data[field]);
-
+                    if (ea.RoutingKey.Equals(routingKey))
+                    {
+                        foreach (String key in data.Keys)
+                        {
+                            var rtdTopicString = SubscriptionManager.FormatPath(host, exchange, routingKey, key);
+                            _subMgr.Set(rtdTopicString, data[key]);
+                        }
+                    }
                 };
                 channel.BasicConsume(queue: queueName,
                                      autoAck: true,

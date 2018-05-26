@@ -12,24 +12,43 @@ namespace RabbitRtd
         public static readonly string UninitializedValue = "<?>";
 
         readonly Dictionary<string, SubInfo> _subByPath;
+        readonly Dictionary<string, SubInfo> _subByRabbitPath;
         readonly Dictionary<int, SubInfo> _subByTopicId;
 
+        
         public SubscriptionManager()
         {
+            _subByRabbitPath = new Dictionary<string, SubInfo>();
             _subByPath = new Dictionary<string, SubInfo>();
             _subByTopicId = new Dictionary<int, SubInfo>();
         }
 
         public bool IsDirty { get; private set; }
 
-        public void Subscribe(int topicId, string origin, string instrument, string field)
+        public bool Subscribe(int topicId, string host, string exchange, string routingKey, string field)
         {
-            var subInfo = new SubInfo(
-                topicId,
-                FormatPath(origin, instrument, field));
+            var rabbitPath = FormatPath(host, exchange, routingKey);
+            var rtdPath = FormatPath(host, exchange, routingKey, field);
 
-            _subByTopicId.Add(topicId, subInfo);
-            _subByPath.Add(subInfo.Path, subInfo);
+            var alreadySubscribed = false;
+
+            if (_subByRabbitPath.TryGetValue(rabbitPath, out SubInfo subInfo))
+            {
+                alreadySubscribed = true;
+                subInfo.addField(field);
+            }
+            else
+            {
+                subInfo = new SubInfo(topicId, rabbitPath);
+                subInfo.addField(field);
+                _subByRabbitPath.Add(rabbitPath, subInfo);
+            }
+
+            SubInfo rtdSubInfo = new SubInfo(topicId, rtdPath);
+            _subByTopicId.Add(topicId, rtdSubInfo);
+            _subByPath.Add(rtdPath, rtdSubInfo);
+
+            return alreadySubscribed;
         }
 
         public void Unsubscribe(int topicId)
@@ -87,18 +106,24 @@ namespace RabbitRtd
         }
 
         [DebuggerStepThrough]
-        public static string FormatPath(string origin, string instrument, string field)
+        public static string FormatPath(string host, string exchange, string routingKey)
         {
             return string.Format("{0}/{1}/{2}",
-                                 origin.ToUpperInvariant(),
-                                 instrument.ToUpperInvariant(),
-                                 field.ToUpperInvariant());
+                                 host.ToUpperInvariant(),
+                                 exchange.ToUpperInvariant(),
+                                 routingKey.ToUpperInvariant());
+        }
+        [DebuggerStepThrough]
+        public static string FormatPath(string host, string exchange, string routingKey, string field)
+        {
+            return string.Format("{0}/{1}", FormatPath(host, exchange, routingKey), field);
         }
 
         public class SubInfo
         {
             public int TopicId { get; private set; }
             public string Path { get; private set; }
+            public HashSet<string> Fields { get; private set; }
 
             private object _value;
 
@@ -120,6 +145,11 @@ namespace RabbitRtd
                 Path = path;
                 Value = UninitializedValue;
                 IsDirty = false;
+                Fields = new HashSet<string>();
+            }
+            public void addField(string field)
+            {
+                Fields.Add(field);
             }
         }
         public struct UpdatedValue
@@ -131,10 +161,17 @@ namespace RabbitRtd
             {
                 TopicId = topicId;
 
-                if (Decimal.TryParse(value.ToString(), out Decimal dec))
-                    Value = dec;
+                if (value is String)
+                {
+                   if (Decimal.TryParse(value.ToString(), out Decimal dec))
+                        Value = dec;
+                    else
+                        Value = value;
+                }
                 else
+                {
                     Value = value;
+                }
             }
         }
     }
