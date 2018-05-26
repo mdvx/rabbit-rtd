@@ -55,6 +55,13 @@ namespace RabbitRtd
                 _timer.Stop();
                 _timer = null;
             }
+
+            lock(_subMgr)
+            {
+                _subMgr.Invalidate();
+                _callback.UpdateNotify();
+            }
+            //Thread.Sleep(2000);
         }
 
         // Excel calls this when it wants to make a new topic subscription.

@@ -18,7 +18,7 @@ Excel RTD server sourcing data from Rabbit-MQ
 Once the RTD server has been installed, you can use it from Excel via the RTD macro.
 This is the syntax:
 
-`=RTD("rabbit",, "TOPIC", "FIELD", filter1, filter2)`
+`=RTD("rabbit",, "HOST","TOPIC", "FIELD")`
 
 
 <!-- ![Excel screenshot](doc/crypto-rtd-excel.png) -->

@@ -72,6 +72,20 @@ namespace RabbitRtd
             }
         }
 
+        internal void Invalidate()
+        {
+            var updated = new List<UpdatedValue>(_subByTopicId.Count);
+            foreach (var subInfo in _subByTopicId.Values)
+            {
+                if (subInfo.IsDirty)
+                {
+                    updated.Add(new UpdatedValue(subInfo.TopicId, "<Dead>"));
+                    subInfo.IsDirty = false;
+                }
+            }
+            IsDirty = true;
+        }
+
         [DebuggerStepThrough]
         public static string FormatPath(string origin, string instrument, string field)
         {
