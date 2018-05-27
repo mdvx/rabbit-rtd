@@ -40,7 +40,7 @@ namespace RabbitRtd
             // function from the COM thread. System.Windows.Threading' 
             // DispatcherTimer will use COM thread's message pump.
             _timer = new DispatcherTimer();
-            _timer.Interval = TimeSpan.FromMilliseconds(50); // this needs to be very frequent
+            _timer.Interval = TimeSpan.FromMilliseconds(30); // this needs to be very frequent
             _timer.Tick += TimerElapsed;
             _timer.Start();
 
@@ -98,7 +98,6 @@ namespace RabbitRtd
                 if (_subMgr.Subscribe(topicId, host, exchange, routingKey, field))
                     return; // already subscribed 
             }
-
 
             var factory = new ConnectionFactory() { HostName = host };
             using (var connection = factory.CreateConnection())
@@ -195,5 +194,4 @@ namespace RabbitRtd
             }
         }
     }
-
 }

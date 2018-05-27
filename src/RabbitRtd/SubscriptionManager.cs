@@ -167,6 +167,22 @@ namespace RabbitRtd
                         Value = dec;
                     else
                         Value = value;
+
+                    //if (dec > 1500000000000)
+                    //    try
+                    //    {
+                    //        Value = DateTimeOffset.FromUnixTimeMilliseconds((long)dec).ToLocalTime();
+                    //    }
+                    //    finally { }
+                        //catch (Exception e)
+                    //    {
+                    //        Value = e.Message;
+                    //    }
+                }
+                else if (value is long)
+                {
+                    long val = (value as long?).Value;
+                    Value = DateTimeOffset.FromUnixTimeMilliseconds(val);
                 }
                 else
                 {
