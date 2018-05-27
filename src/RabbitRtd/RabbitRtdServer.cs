@@ -113,11 +113,11 @@ namespace RabbitRtd
                 var consumer = new EventingBasicConsumer(channel);
                 consumer.Received += (model, ea) =>
                 {
-                    var json = Encoding.UTF8.GetString(ea.Body);
-                    var data = JsonConvert.DeserializeObject<Dictionary<String,String>>(json);
-
                     if (ea.RoutingKey.Equals(routingKey))
                     {
+                        var json = Encoding.UTF8.GetString(ea.Body);
+                        var data = JsonConvert.DeserializeObject<Dictionary<String, String>>(json);
+
                         foreach (String key in data.Keys)
                         {
                             var rtdTopicString = SubscriptionManager.FormatPath(host, exchange, routingKey, key);
