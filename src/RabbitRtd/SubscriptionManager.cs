@@ -168,18 +168,11 @@ namespace RabbitRtd
                     else
                         Value = value;
 
-                    if (dec > 1500000000000)
+                    if (dec > 1500_000_000_000 && dec < 1600_000_000_000)
                         Value = DateTimeOffset
                             .FromUnixTimeMilliseconds(Decimal.ToInt64(dec))
                             .DateTime
                             .ToLocalTime();
-                            
-
-                }
-                else if (value is long)
-                {
-                    long val = (value as long?).Value;
-                    Value = DateTimeOffset.FromUnixTimeMilliseconds(val);
                 }
                 else
                 {
