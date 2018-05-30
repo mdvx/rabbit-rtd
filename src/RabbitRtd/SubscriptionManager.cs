@@ -25,6 +25,14 @@ namespace RabbitRtd
 
         public bool IsDirty { get; private set; }
 
+        public bool Subscribe(int topicId, string topic)
+        {
+            string path = topic;
+            var subInfo = new SubInfo(topicId, path);
+            _subByTopicId.Add(topicId, subInfo);
+            _subByPath.Add(path, subInfo);
+            return true;
+        }
         public bool Subscribe(int topicId, string host, string exchange, string routingKey, string field)
         {
             var rabbitPath = FormatPath(host, exchange, routingKey);
@@ -35,12 +43,12 @@ namespace RabbitRtd
             if (_subByRabbitPath.TryGetValue(rabbitPath, out SubInfo subInfo))
             {
                 alreadySubscribed = true;
-                subInfo.addField(field);
+                subInfo.AddField(field);
             }
             else
             {
                 subInfo = new SubInfo(topicId, rabbitPath);
-                subInfo.addField(field);
+                subInfo.AddField(field);
                 _subByRabbitPath.Add(rabbitPath, subInfo);
             }
 
@@ -73,13 +81,12 @@ namespace RabbitRtd
                     subInfo.IsDirty = false;
                 }
             }
-
             IsDirty = false;
 
             return updated;
         }
 
-        public void Set(string path, object value)
+        public bool Set(string path, object value)
         {
             if (_subByPath.TryGetValue(path, out SubInfo subInfo))
             {
@@ -87,23 +94,25 @@ namespace RabbitRtd
                 {
                     subInfo.Value = value;
                     IsDirty = true;
+                    return true;
                 }
             }
+            return false;
         }
 
-        internal void Invalidate()
-        {
-            var updated = new List<UpdatedValue>(_subByTopicId.Count);
-            foreach (var subInfo in _subByTopicId.Values)
-            {
-                if (subInfo.IsDirty)
-                {
-                    updated.Add(new UpdatedValue(subInfo.TopicId, "<Dead>"));
-                    subInfo.IsDirty = false;
-                }
-            }
-            IsDirty = true;
-        }
+        //internal void Invalidate()
+        //{
+        //    var updated = new List<UpdatedValue>(_subByTopicId.Count);
+        //    foreach (var subInfo in _subByTopicId.Values)
+        //    {
+        //        if (subInfo.IsDirty)
+        //        {
+        //            updated.Add(new UpdatedValue(subInfo.TopicId, "<Dead>"));
+        //            subInfo.IsDirty = false;
+        //        }
+        //    }
+        //    IsDirty = true;
+        //}
 
         [DebuggerStepThrough]
         public static string FormatPath(string host, string exchange, string routingKey)
@@ -147,7 +156,7 @@ namespace RabbitRtd
                 IsDirty = false;
                 Fields = new HashSet<string>();
             }
-            public void addField(string field)
+            public void AddField(string field)
             {
                 Fields.Add(field);
             }

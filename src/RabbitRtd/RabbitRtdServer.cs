@@ -23,7 +23,10 @@ namespace RabbitRtd
         IRtdUpdateEvent _callback;
         DispatcherTimer _timer;
         readonly SubscriptionManager _subMgr;
+        Dictionary<string, IConnection> _connections = new Dictionary<string, IConnection>();
 
+        private const string CLOCK = "CLOCK";
+        private const string LAST_RTD = "LAST_RTD";
 
         public RabbitRtdServer ()
         {
@@ -40,7 +43,7 @@ namespace RabbitRtd
             // function from the COM thread. System.Windows.Threading' 
             // DispatcherTimer will use COM thread's message pump.
             _timer = new DispatcherTimer();
-            _timer.Interval = TimeSpan.FromMilliseconds(30); // this needs to be very frequent
+            _timer.Interval = TimeSpan.FromMilliseconds(330); // this needs to be very frequent
             _timer.Tick += TimerElapsed;
             _timer.Start();
 
@@ -58,7 +61,6 @@ namespace RabbitRtd
 
             lock(_subMgr)
             {
-                _subMgr.Invalidate();
                 _callback.UpdateNotify();
             }
             //Thread.Sleep(2000);
@@ -73,14 +75,34 @@ namespace RabbitRtd
         {
             newValues = true;
 
-            // We assume 3 strings: Origin, Instrument, Field
-            if (strings.Length == 4)
+            if (strings.Length == 1)
+            {
+                string host = strings.GetValue(0).ToString().ToUpperInvariant();
+
+                switch (host)
+                {
+                    case CLOCK:
+                        lock (_subMgr)
+                            _subMgr.Subscribe(topicId, CLOCK);
+
+                        return DateTime.Now.ToLocalTime();
+
+                    case LAST_RTD:
+                        lock (_subMgr)
+                            _subMgr.Subscribe(topicId, LAST_RTD);
+
+                        return DateTime.Now.ToLocalTime();
+                        //return SubscriptionManager.UninitializedValue;
+                }
+                return "ERROR: Expected: CLOCK or host, exchange, routingKey, field";
+            }
+            else if (strings.Length >= 3)
             {
                 // Crappy COM-style arrays...
                 string host = strings.GetValue(0).ToString();
                 string exchange = strings.GetValue(1).ToString();
                 string routingKey = strings.GetValue(2).ToString();
-                string field = strings.GetValue(3).ToString();
+                string field = strings.Length >= 4 ? strings.GetValue(3).ToString() : null;
 
                 CancellationTokenSource cts = new CancellationTokenSource();
                 Task.Run(() => SubscribeRabbit(topicId, host, exchange, routingKey, field, cts));
@@ -88,7 +110,7 @@ namespace RabbitRtd
                 return SubscriptionManager.UninitializedValue;
             }
 
-            return "ERROR: Expected: host, exchange, routingKey, field";
+            return "ERROR: Expected: CLOCK or host, exchange, routingKey, field";
         }
 
         private void SubscribeRabbit(int topicId, string host, string exchange, string routingKey, string field, CancellationTokenSource cts)
@@ -99,11 +121,21 @@ namespace RabbitRtd
                     return; // already subscribed 
             }
 
-            var factory = new ConnectionFactory() { HostName = host };
-            using (var connection = factory.CreateConnection())
+            IConnection connection;
+            lock (_connections)
+            {
+                if (!_connections.TryGetValue(host, out connection))
+                {
+                    var factory = new ConnectionFactory() { HostName = host };
+                    connection = factory.CreateConnection();
+                    _connections.Add(host, connection);
+                }
+            }
+
             using (var channel = connection.CreateModel())
             {
-                channel.ExchangeDeclare(exchange: exchange, type: "fanout");
+                channel.ExchangeDeclare( exchange: exchange, type: "fanout");
+                //channel.BasicQos = 100;
 
                 var queueName = channel.QueueDeclare().QueueName;
                 channel.QueueBind(queue: queueName,
@@ -182,8 +214,12 @@ namespace RabbitRtd
             if (wasMarketDataUpdated)
             {
                 // Notify Excel that Market Data has been updated
+                _subMgr.Set(LAST_RTD, DateTime.Now.ToLocalTime());
                 _callback.UpdateNotify();
             }
+
+            if (_subMgr.Set(CLOCK, DateTime.Now.ToLocalTime()))
+                _callback.UpdateNotify();
         }
 
         List<SubscriptionManager.UpdatedValue> GetUpdatedValues ()
