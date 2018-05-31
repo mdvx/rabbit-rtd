@@ -42,8 +42,9 @@ namespace RabbitRtd
             // It is also important to invoke the Excel callback notify
             // function from the COM thread. System.Windows.Threading' 
             // DispatcherTimer will use COM thread's message pump.
-            _timer = new DispatcherTimer();
-            _timer.Interval = TimeSpan.FromMilliseconds(330); // this needs to be very frequent
+            DispatcherTimer dispatcherTimer = new DispatcherTimer();
+            _timer = dispatcherTimer;
+            _timer.Interval = TimeSpan.FromMilliseconds(95); // this needs to be very frequent
             _timer.Tick += TimerElapsed;
             _timer.Start();
 
@@ -73,8 +74,6 @@ namespace RabbitRtd
                                        ref Array strings,
                                        ref bool newValues)
         {
-            newValues = true;
-
             if (strings.Length == 1)
             {
                 string host = strings.GetValue(0).ToString().ToUpperInvariant();
@@ -98,6 +97,8 @@ namespace RabbitRtd
             }
             else if (strings.Length >= 3)
             {
+                newValues = true;
+
                 // Crappy COM-style arrays...
                 string host = strings.GetValue(0).ToString();
                 string exchange = strings.GetValue(1).ToString();
@@ -105,64 +106,74 @@ namespace RabbitRtd
                 string field = strings.Length >= 4 ? strings.GetValue(3).ToString() : null;
 
                 CancellationTokenSource cts = new CancellationTokenSource();
-                Task.Run(() => SubscribeRabbit(topicId, host, exchange, routingKey, field, cts));
+                Task.Run(() => SubscribeRabbit(topicId, host, exchange, routingKey, field, cts.Token));
 
                 return SubscriptionManager.UninitializedValue;
             }
 
+            newValues = false;
+
             return "ERROR: Expected: CLOCK or host, exchange, routingKey, field";
         }
 
-        private void SubscribeRabbit(int topicId, string host, string exchange, string routingKey, string field, CancellationTokenSource cts)
+        private void SubscribeRabbit(int topicId, string host, string exchange, string routingKey, string field, CancellationToken cts)
         {
-            lock (_subMgr)
+            try
             {
-                if (_subMgr.Subscribe(topicId, host, exchange, routingKey, field))
-                    return; // already subscribed 
-            }
+                lock (_subMgr)
+                {
+                    if (_subMgr.Subscribe(topicId, host, exchange, routingKey, field))
+                        return; // already subscribed 
+                }
 
-            IConnection connection;
-            lock (_connections)
-            {
-                if (!_connections.TryGetValue(host, out connection))
+                if (!_connections.TryGetValue(host, out IConnection connection))
                 {
                     var factory = new ConnectionFactory() { HostName = host };
                     connection = factory.CreateConnection();
-                    _connections.Add(host, connection);
+                    lock (_connections)
+                    {
+                        _connections[host] = connection;
+                    }
+                }
+
+                using (var channel = connection.CreateModel())
+                {
+                    channel.ExchangeDeclare(exchange: exchange, type: "topic", autoDelete: true);
+                    //channel.BasicQos = 100;
+
+                    var queueName = channel.QueueDeclare().QueueName;
+                    channel.QueueBind(queue: queueName,
+                                      exchange: exchange,
+                                      routingKey: routingKey);
+
+                    var consumer = new EventingBasicConsumer(channel);
+                    consumer.Received += (model, ea) =>
+                    {
+                        if (ea.RoutingKey.Equals(routingKey))
+                        {
+                            var json = Encoding.UTF8.GetString(ea.Body);
+                            var data = JsonConvert.DeserializeObject<Dictionary<String, String>>(json);
+
+                            foreach (String key in data.Keys)
+                            {
+                                var rtdTopicString = SubscriptionManager.FormatPath(host, exchange, routingKey, key);
+                                _subMgr.Set(rtdTopicString, data[key]);
+                            }
+                        }
+                    };
+                    channel.BasicConsume(queue: queueName,
+                                         autoAck: true,
+                                         consumer: consumer);
+
+                    while (!cts.IsCancellationRequested)
+                        Thread.Sleep(1000);
+
+                    channel.Close();
                 }
             }
-
-            using (var channel = connection.CreateModel())
+            catch(Exception e)
             {
-                channel.ExchangeDeclare( exchange: exchange, type: "fanout");
-                //channel.BasicQos = 100;
-
-                var queueName = channel.QueueDeclare().QueueName;
-                channel.QueueBind(queue: queueName,
-                                  exchange: exchange,
-                                  routingKey: routingKey);
-
-                var consumer = new EventingBasicConsumer(channel);
-                consumer.Received += (model, ea) =>
-                {
-                    if (ea.RoutingKey.Equals(routingKey))
-                    {
-                        var json = Encoding.UTF8.GetString(ea.Body);
-                        var data = JsonConvert.DeserializeObject<Dictionary<String, String>>(json);
-
-                        foreach (String key in data.Keys)
-                        {
-                            var rtdTopicString = SubscriptionManager.FormatPath(host, exchange, routingKey, key);
-                            _subMgr.Set(rtdTopicString, data[key]);
-                        }
-                    }
-                };
-                channel.BasicConsume(queue: queueName,
-                                     autoAck: true,
-                                     consumer: consumer);
-
-                while (!cts.Token.IsCancellationRequested)
-                    Thread.Sleep(1000);
+                ESLog.Error("SubscribeRabbit", e);
             }
         }
 

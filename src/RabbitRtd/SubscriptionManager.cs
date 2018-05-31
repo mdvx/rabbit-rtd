@@ -14,16 +14,22 @@ namespace RabbitRtd
         readonly Dictionary<string, SubInfo> _subByPath;
         readonly Dictionary<string, SubInfo> _subByRabbitPath;
         readonly Dictionary<int, SubInfo> _subByTopicId;
+        readonly Dictionary<int, SubInfo> _dirtyMap;
 
-        
+
         public SubscriptionManager()
         {
             _subByRabbitPath = new Dictionary<string, SubInfo>();
             _subByPath = new Dictionary<string, SubInfo>();
             _subByTopicId = new Dictionary<int, SubInfo>();
+            _dirtyMap = new Dictionary<int, SubInfo>();
         }
 
-        public bool IsDirty { get; private set; }
+        public bool IsDirty {
+            get {
+                return _dirtyMap.Count > 0;
+            }
+        }
 
         public bool Subscribe(int topicId, string topic)
         {
@@ -70,18 +76,15 @@ namespace RabbitRtd
 
         public List<UpdatedValue> GetUpdatedValues()
         {
-            var updated = new List<UpdatedValue>(_subByTopicId.Count);
+            var updated = new List<UpdatedValue>(_dirtyMap.Count);
 
-            // For simplicity, let's just do a linear scan
-            foreach (var subInfo in _subByTopicId.Values)
-            {
-                if (subInfo.IsDirty)
+            lock (_dirtyMap) { 
+                foreach (var subInfo in _dirtyMap.Values)
                 {
                     updated.Add(new UpdatedValue(subInfo.TopicId, subInfo.Value));
-                    subInfo.IsDirty = false;
                 }
+                _dirtyMap.Clear();
             }
-            IsDirty = false;
 
             return updated;
         }
@@ -93,7 +96,10 @@ namespace RabbitRtd
                 if (value != subInfo.Value)
                 {
                     subInfo.Value = value;
-                    IsDirty = true;
+                    lock (_dirtyMap)
+                    {
+                        _dirtyMap[subInfo.TopicId] = subInfo;
+                    }
                     return true;
                 }
             }
@@ -142,18 +148,14 @@ namespace RabbitRtd
                 set
                 {
                     _value = value;
-                    IsDirty = true;
                 }
             }
-
-            public bool IsDirty { get; set; }
 
             public SubInfo(int topicId, string path)
             {
                 TopicId = topicId;
                 Path = path;
                 Value = UninitializedValue;
-                IsDirty = false;
                 Fields = new HashSet<string>();
             }
             public void AddField(string field)
