@@ -44,7 +44,7 @@ namespace RabbitRtd
             // DispatcherTimer will use COM thread's message pump.
             DispatcherTimer dispatcherTimer = new DispatcherTimer();
             _timer = dispatcherTimer;
-            _timer.Interval = TimeSpan.FromMilliseconds(95); // this needs to be very frequent
+            _timer.Interval = TimeSpan.FromMilliseconds(33); // this needs to be very frequent
             _timer.Tick += TimerElapsed;
             _timer.Start();
 
@@ -70,9 +70,7 @@ namespace RabbitRtd
         // Excel calls this when it wants to make a new topic subscription.
         // topicId becomes the key representing the subscription.
         // String array contains any aux data user provides to RTD macro.
-        object IRtdServer.ConnectData (int topicId,
-                                       ref Array strings,
-                                       ref bool newValues)
+        object IRtdServer.ConnectData (int topicId, ref Array strings, ref bool newValues)
         {
             if (strings.Length == 1)
             {
@@ -215,14 +213,14 @@ namespace RabbitRtd
         // if so, notifies Excel about it.
         private void TimerElapsed (object sender, EventArgs e)
         {
-            bool wasMarketDataUpdated;
+            bool wasDataUpdated;
 
             lock (_subMgr)
             {
-                wasMarketDataUpdated = _subMgr.IsDirty;
+                wasDataUpdated = _subMgr.IsDirty;
             }
 
-            if (wasMarketDataUpdated)
+            if (wasDataUpdated)
             {
                 // Notify Excel that Market Data has been updated
                 _subMgr.Set(LAST_RTD, DateTime.Now.ToLocalTime());

@@ -1,5 +1,9 @@
 ﻿using System;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Threading;
+using RabbitMQ.Client;
 using RabbitRtd;
 
 namespace TestApp
@@ -24,22 +28,66 @@ namespace TestApp
             _rtd = new RabbitRtdServer();
             _rtd.ServerStart(this);
 
-            Sub("BTC-USD", "BID");
-            Sub("BTC-USD", "ASK");
-            
+            CancellationTokenSource cts = new CancellationTokenSource();
+
+            for (int i = 0; i < 3; i++)
+            {
+                var rk = "ROUTING_KEY_" + i;
+                Task.Run(() => PublishRabbit("EXCHANGE", rk, "FIELD", cts.Token));
+                Sub("EXCHANGE", rk, "FIELD");
+            }
+
             // Start up a Windows message pump and spin forever.
             Dispatcher.Run();
         }
+        void PublishRabbit(string exchange, string routingKey, string field, CancellationToken cts)
+        {
+            try
+            {
+                var factory = new ConnectionFactory() { HostName = "localhost" };
+                IConnection connection = factory.CreateConnection();
+
+                using (var channel = connection.CreateModel())
+                {
+                    channel.ExchangeDeclare(exchange: exchange, type: "topic", autoDelete: true);
+                    //channel.BasicQos = 100;
+
+                    int l = 0;
+                    while (!cts.IsCancellationRequested)
+                    {
+                        Interlocked.Increment(ref l);
+
+                        var str = String.Format("{{ rk: '{0}', {1}: {2} }}", routingKey, field, l);
+                        channel.BasicPublish(exchange: exchange,
+                            routingKey: routingKey,
+                            basicProperties: null,
+                            mandatory: true,
+                            body: Encoding.ASCII.GetBytes(str));
+
+                        //Console.WriteLine("sending " + str);
+
+                        Thread.Sleep(10);
+                    }
+
+                    channel.Close();
+                }
+            }
+            catch (Exception e)
+            {
+                ESLog.Error("SubscribeRabbit", e);
+            }
+        }
 
         int _topic;
-        void Sub (string instrument, string field)
+        void Sub (string exchange, string routingKey, string field)
         {
-            Console.WriteLine("Subscribing: topic={0}, instr={1}, field={2}", _topic, instrument, field);
+            Console.WriteLine("Subscribing: topic={0}, exchange={1}, routingKey={2}, field={3}", _topic, exchange, routingKey, field);
             
             var a = new[]
                     {
-                        "rabbit",
-                        instrument,
+                        "localhost",
+                        exchange,
+                        routingKey,
                         field
                     };
 
