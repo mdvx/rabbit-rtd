@@ -34,7 +34,9 @@ namespace TestApp
             {
                 var rk = "ROUTING_KEY_" + i;
                 Task.Run(() => PublishRabbit("EXCHANGE", rk, "FIELD", cts.Token));
-                Sub("EXCHANGE", rk, "FIELD");
+
+                if (false)
+                    Sub("EXCHANGE", rk, "FIELD");
             }
 
             // Start up a Windows message pump and spin forever.
@@ -64,9 +66,9 @@ namespace TestApp
                             mandatory: true,
                             body: Encoding.ASCII.GetBytes(str));
 
-                        //Console.WriteLine("sending " + str);
+                        Console.WriteLine("sending " + str);
 
-                        Thread.Sleep(10);
+                        Thread.Sleep(500);
                     }
 
                     channel.Close();

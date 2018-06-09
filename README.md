@@ -21,5 +21,5 @@ This is the syntax:
 `=RTD("rabbit",, "HOST","TOPIC", "FIELD")`
 
 
-<!-- ![Excel screenshot](doc/crypto-rtd-excel.png) -->
+![Excel screenshot](doc/rabbit-rtd-excel.png)
 
