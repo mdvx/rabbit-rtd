@@ -22,6 +22,7 @@ namespace TestApp
         }
 
         IRtdServer _rtd;
+        bool consoleAppTest = false;   // false: test with excel, true: test with console app
 
         void Run ()
         {
@@ -35,7 +36,7 @@ namespace TestApp
                 var rk = "ROUTING_KEY_" + i;
                 Task.Run(() => PublishRabbit("EXCHANGE", rk, "FIELD", cts.Token));
 
-                if (false)
+                if (consoleAppTest)
                     Sub("EXCHANGE", rk, "FIELD");
             }
 
@@ -68,7 +69,7 @@ namespace TestApp
 
                         Console.WriteLine("sending " + str);
 
-                        Thread.Sleep(500);
+                        Thread.Sleep(50);
                     }
 
                     channel.Close();

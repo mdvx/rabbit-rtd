@@ -10,7 +10,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8B56426E-4125-45BB-9662-82C29198FFAE}"
 	ProjectSection(SolutionItems) = preProject
 		build.cmd = build.cmd
+		doc\clock.xlsx = doc\clock.xlsx
 		LICENSE = LICENSE
+		doc\rabbit-test.xlsx = doc\rabbit-test.xlsx
 		README.md = README.md
 		register.cmd = register.cmd
 		register.debug.cmd = register.debug.cmd
