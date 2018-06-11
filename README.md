@@ -19,6 +19,7 @@ Once the RTD server has been installed, you can use it from Excel via the RTD ma
 This is the syntax:
 
 `=RTD("rabbit",, "HOST", "EXCHANGE", "ROUTING_KEY")`   // returns whole message as a string
+
 `=RTD("rabbit",, "HOST", "EXCHANGE", "ROUTING_KEY", "FIELD")`  // requires JSON formatted messages
 
 EXCHANGE should be declared as type: "topic", autoDelete: true
