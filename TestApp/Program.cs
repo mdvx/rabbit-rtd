@@ -67,7 +67,8 @@ namespace TestApp
                             mandatory: true,
                             body: Encoding.ASCII.GetBytes(str));
 
-                        Console.WriteLine("sending " + str);
+                        if (l % 5000 == 0)
+                            Console.WriteLine("sending " + str);
 
                         //Thread.Sleep(50);
                     }
