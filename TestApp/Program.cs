@@ -69,7 +69,7 @@ namespace TestApp
 
                         Console.WriteLine("sending " + str);
 
-                        Thread.Sleep(50);
+                        //Thread.Sleep(50);
                     }
 
                     channel.Close();
