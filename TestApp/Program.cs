@@ -31,7 +31,7 @@ namespace TestApp
 
             CancellationTokenSource cts = new CancellationTokenSource();
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 1; i++)
             {
                 var rk = "ROUTING_KEY_" + i;
                 Task.Run(() => PublishRabbit("EXCHANGE", rk, "FIELD", cts.Token));

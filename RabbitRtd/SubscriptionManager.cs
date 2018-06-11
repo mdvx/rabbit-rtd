@@ -121,17 +121,13 @@ namespace RabbitRtd
         //}
 
         [DebuggerStepThrough]
-        public static string FormatPath(string host, string exchange, string routingKey)
+        public static string FormatPath(string host, string exchange, string routingKey, string field=null)
         {
-            return string.Format("{0}/{1}/{2}",
-                                 host.ToUpperInvariant(),
-                                 exchange.ToUpperInvariant(),
-                                 routingKey.ToUpperInvariant());
-        }
-        [DebuggerStepThrough]
-        public static string FormatPath(string host, string exchange, string routingKey, string field)
-        {
-            return string.Format("{0}/{1}", FormatPath(host, exchange, routingKey), field);
+            return string.Format("{0}/{1}/{2}/{3}",
+                                host.ToUpperInvariant(),
+                                exchange.ToUpperInvariant(),
+                                routingKey.ToUpperInvariant(),
+                                field);
         }
 
         public class SubInfo

@@ -149,13 +149,24 @@ namespace RabbitRtd
                     {
                         if (ea.RoutingKey.Equals(routingKey))
                         {
-                            var json = Encoding.UTF8.GetString(ea.Body);
-                            var data = JsonConvert.DeserializeObject<Dictionary<String, String>>(json);
+                            var str = Encoding.UTF8.GetString(ea.Body);
+                            var rtdSubTopic = SubscriptionManager.FormatPath(host, exchange, routingKey);
 
-                            foreach (String key in data.Keys)
+                            _subMgr.Set(rtdSubTopic, str);
+
+                            try
                             {
-                                var rtdTopicString = SubscriptionManager.FormatPath(host, exchange, routingKey, key);
-                                _subMgr.Set(rtdTopicString, data[key]);
+                                var json = JsonConvert.DeserializeObject<Dictionary<String, String>>(str);
+
+                                foreach (string field_in in json.Keys)
+                                {
+                                    var rtdTopicString = SubscriptionManager.FormatPath(host, exchange, routingKey, field_in);
+                                    _subMgr.Set(rtdTopicString, json[field_in]);
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                _subMgr.Set(rtdSubTopic, e.Message);
                             }
                         }
                     };
