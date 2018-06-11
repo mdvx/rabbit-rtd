@@ -60,7 +60,7 @@ namespace TestApp
                     {
                         Interlocked.Increment(ref l);
 
-                        var str = String.Format("{{ rk: '{0}', {1}: {2} }}", routingKey, field, l);
+                        var str = String.Format("{{ \"rk\": \"{0}\", \"{1}\": {2} }}", routingKey, field, l);
                         channel.BasicPublish(exchange: exchange,
                             routingKey: routingKey,
                             basicProperties: null,
