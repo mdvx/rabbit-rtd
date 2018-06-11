@@ -23,6 +23,7 @@ This is the syntax:
 
 EXCHANGE should be declared as type: "topic", autoDelete: true
 
-![Excel screenshot](doc/ice_video.webm)
+[![Watch the video](doc/ice_video.webm)]
+
 ![Excel screenshot](doc/rabbit-rtd-excel-50ms.png)
 
