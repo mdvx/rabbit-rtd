@@ -15,14 +15,15 @@ namespace RabbitRtd
         readonly Dictionary<string, SubInfo> _subByRabbitPath;
         readonly Dictionary<int, SubInfo> _subByTopicId;
         readonly Dictionary<int, SubInfo> _dirtyMap;
+        readonly Action _onDirty;
 
-
-        public SubscriptionManager()
+        public SubscriptionManager(Action onDirty)
         {
             _subByRabbitPath = new Dictionary<string, SubInfo>();
             _subByPath = new Dictionary<string, SubInfo>();
             _subByTopicId = new Dictionary<int, SubInfo>();
             _dirtyMap = new Dictionary<int, SubInfo>();
+            _onDirty = onDirty;
         }
 
         public bool IsDirty {
@@ -99,26 +100,14 @@ namespace RabbitRtd
                     lock (_dirtyMap)
                     {
                         _dirtyMap[subInfo.TopicId] = subInfo;
+
+                        _onDirty?.Invoke();
                     }
                     return true;
                 }
             }
             return false;
         }
-
-        //internal void Invalidate()
-        //{
-        //    var updated = new List<UpdatedValue>(_subByTopicId.Count);
-        //    foreach (var subInfo in _subByTopicId.Values)
-        //    {
-        //        if (subInfo.IsDirty)
-        //        {
-        //            updated.Add(new UpdatedValue(subInfo.TopicId, "<Dead>"));
-        //            subInfo.IsDirty = false;
-        //        }
-        //    }
-        //    IsDirty = true;
-        //}
 
         [DebuggerStepThrough]
         public static string FormatPath(string host, string exchange, string routingKey, string field=null)
