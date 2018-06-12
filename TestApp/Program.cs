@@ -34,7 +34,8 @@ namespace TestApp
             for (int i = 0; i < 3; i++)
             {
                 var rk = "ROUTING_KEY_" + i;
-                Task.Run(() => PublishRabbit("EXCHANGE", rk, "FIELD", cts.Token));
+                var b = i % 2 == 0;
+                Task.Run(() => PublishRabbit("EXCHANGE", rk, "FIELD", b, cts.Token));
 
                 if (consoleAppTest)
                     Sub("EXCHANGE", rk, "FIELD");
@@ -43,7 +44,7 @@ namespace TestApp
             // Start up a Windows message pump and spin forever.
             Dispatcher.Run();
         }
-        void PublishRabbit(string exchange, string routingKey, string field, CancellationToken cts)
+        void PublishRabbit(string exchange, string routingKey, string field, bool json, CancellationToken cts)
         {
             try
             {
@@ -55,12 +56,16 @@ namespace TestApp
                     channel.ExchangeDeclare(exchange: exchange, type: "topic", autoDelete: true);
                     //channel.BasicQos = 100;
 
+                    var padding = new String('x', 20);
+
                     int l = 0;
                     while (!cts.IsCancellationRequested)
                     {
                         Interlocked.Increment(ref l);
 
-                        var str = String.Format("{{ \"rk\": \"{0}\", \"{1}\": {2} }}", routingKey, field, l);
+                        var str = json ? String.Format("{{ \"rk\": \"{0}\", \"{1}\": {2} }}", routingKey, field, l)   // alternate between JSON
+                                       : String.Format("{0} => {1}: {2} {3}", routingKey, field, l, padding);         // not JSON
+
                         channel.BasicPublish(exchange: exchange,
                             routingKey: routingKey,
                             basicProperties: null,
@@ -70,7 +75,7 @@ namespace TestApp
                         if (l % 5000 == 0)
                             Console.WriteLine("sending " + str);
 
-                        //Thread.Sleep(50);
+                        //Thread.Sleep(1);
                     }
 
                     channel.Close();
