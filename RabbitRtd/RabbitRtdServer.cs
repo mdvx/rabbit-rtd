@@ -30,7 +30,7 @@ namespace RabbitRtd
 
         public RabbitRtdServer ()
         {
-            _subMgr = new SubscriptionManager();
+            _subMgr = new SubscriptionManager( null ); // _callback.UpdateNotify()
         }
         // Excel calls this. It's an entry point. It passes us a callback
         // structure which we save for later.
@@ -156,12 +156,15 @@ namespace RabbitRtd
 
                             try
                             {
-                                var json = JsonConvert.DeserializeObject<Dictionary<String, String>>(str);
-
-                                foreach (string field_in in json.Keys)
+                                if (str.StartsWith("{"))
                                 {
-                                    var rtdTopicString = SubscriptionManager.FormatPath(host, exchange, routingKey, field_in);
-                                    _subMgr.Set(rtdTopicString, json[field_in]);
+                                    var jo = JsonConvert.DeserializeObject<Dictionary<String, String>>(str);
+
+                                    foreach (string field_in in jo.Keys)
+                                    {
+                                        var rtdTopicString = SubscriptionManager.FormatPath(host, exchange, routingKey, field_in);
+                                        _subMgr.Set(rtdTopicString, jo[field_in]);
+                                    }
                                 }
                             }
                             catch (Exception e)
