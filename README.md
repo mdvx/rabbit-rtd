@@ -18,13 +18,13 @@ Excel RTD server sourcing data from Rabbit-MQ
 Once the RTD server has been installed, you can use it from Excel via the RTD macro.
 This is the syntax:
 ```
-=RTD("rabbit",, $HOST_URI, $EXCHANGE, $ROUTING_KEY)   // returns whole message as a string
-=RTD("rabbit",, $HOST_URI, $EXCHANGE, [$QUEUE,] $ROUTING_KEY, $FIELD)  // requires JSON formatted messages
+=RTD("rabbit",, $HOST_URI, $EXCHANGE, [$QUEUE], [$ROUTING_KEY])   // returns whole message as a string
+=RTD("rabbit",, $HOST_URI, $EXCHANGE, [$QUEUE], [$ROUTING_KEY], $FIELD)  // requires JSON formatted messages
 =RTD("rabbit",, "localhost", "my.x", "my.q", "my.rk")   // returns whole message as a string
 ```
 ### $HOST_URI
 Format
-   [userName:password@]hostName[:portNumber][/virtualHost]
+   [amqp://][userName:password@]hostName[:portNumber][/virtualHost]
 
 Examples:
    localhost

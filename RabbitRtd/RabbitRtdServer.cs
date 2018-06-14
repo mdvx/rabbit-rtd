@@ -23,7 +23,9 @@ namespace RabbitRtd
         IRtdUpdateEvent _callback;
         DispatcherTimer _timer;
         readonly SubscriptionManager _subMgr;
-        Dictionary<string, IConnection> _connections = new Dictionary<string, IConnection>();
+
+        private Dictionary<string, Uri> hostUriMap = new Dictionary<string, Uri>();  // quick lookup of existing host strings
+        private Dictionary<Uri, IConnection> _connections = new Dictionary<Uri, IConnection>();
 
         private const string CLOCK = "CLOCK";
         private const string LAST_RTD = "LAST_RTD";
@@ -93,18 +95,19 @@ namespace RabbitRtd
                 }
                 return "ERROR: Expected: CLOCK or host, exchange, routingKey, field";
             }
-            else if (strings.Length >= 3)
+            else if (strings.Length > 2)
             {
                 newValues = true;
 
                 // Crappy COM-style arrays...
                 string host = strings.GetValue(0).ToString();
                 string exchange = strings.GetValue(1).ToString();
-                string routingKey = strings.GetValue(2).ToString();
-                string field = strings.Length >= 4 ? strings.GetValue(3).ToString() : null;
+                string queue = strings.Length > 2 ?  strings.GetValue(2).ToString() : null;
+                string routingKey = strings.Length > 3 ? strings.GetValue(3).ToString() : null;
+                string field = strings.Length > 4 ? strings.GetValue(4).ToString() : null;
 
                 CancellationTokenSource cts = new CancellationTokenSource();
-                Task.Run(() => SubscribeRabbit(topicId, host, exchange, routingKey, field, cts.Token));
+                Task.Run(() => SubscribeRabbit(topicId, host, exchange, queue, routingKey, field, cts.Token));
 
                 return SubscriptionManager.UninitializedValue;
             }
@@ -114,24 +117,41 @@ namespace RabbitRtd
             return "ERROR: Expected: CLOCK or host, exchange, routingKey, field";
         }
 
-        private void SubscribeRabbit(int topicId, string host, string exchange, string routingKey, string field, CancellationToken cts)
+        private object SubscribeRabbit(int topicId, string host, string exchange, string queue , string routingKey, string field, CancellationToken cts)
         {
             try
             {
-                lock (_subMgr)
+                if (!hostUriMap.TryGetValue(host, out Uri hostUri))
                 {
-                    if (_subMgr.Subscribe(topicId, host, exchange, routingKey, field))
-                        return; // already subscribed 
+                    //{ Scheme = "amqp", UserName = "guest", Password = "guest", Host = "localhost", Port = 5672 };
+                    //[amqp://][userName:password@]hostName[:portNumber][/virtualHost]
+                    UriBuilder b1 = new UriBuilder(host);
+                    UriBuilder b2 = new UriBuilder()
+                    {
+                        Scheme = b1.Scheme == "http" ? "amqp" : b1.Scheme,  // TODO: FIX
+                        Host = b1.Host ?? "localhost",
+                        Port = b1.Port == 80 ? 5672 : b1.Port,  // TODO: FIX
+                        UserName = b1.UserName ?? "guest",
+                        Password = b1.Password ?? "guest",
+                        Path = b1.Path
+                    };
+
+                    hostUri = b2.Uri;
+
+                    hostUriMap[host] = hostUri;
                 }
 
-                if (!_connections.TryGetValue(host, out IConnection connection))
+                lock (_subMgr)
                 {
-                    var factory = new ConnectionFactory() { HostName = host };
+                    if (_subMgr.Subscribe(topicId, hostUri, exchange, routingKey, field))
+                        return _subMgr.GetValue(topicId); // already subscribed 
+                }
+
+                if (!_connections.TryGetValue(hostUri, out IConnection connection))
+                {
+                    var factory = new ConnectionFactory() { Uri = hostUri };
                     connection = factory.CreateConnection();
-                    lock (_connections)
-                    {
-                        _connections[host] = connection;
-                    }
+                    _connections[hostUri] = connection;
                 }
 
                 using (var channel = connection.CreateModel())
@@ -139,7 +159,7 @@ namespace RabbitRtd
                     channel.ExchangeDeclare(exchange: exchange, type: "topic", autoDelete: true);
                     //channel.BasicQos = 100;
 
-                    var queueName = channel.QueueDeclare().QueueName;
+                    var queueName = channel.QueueDeclare().QueueName; //  queue ?? 
                     channel.QueueBind(queue: queueName,
                                       exchange: exchange,
                                       routingKey: routingKey);
@@ -150,7 +170,7 @@ namespace RabbitRtd
                         if (ea.RoutingKey.Equals(routingKey))
                         {
                             var str = Encoding.UTF8.GetString(ea.Body);
-                            var rtdSubTopic = SubscriptionManager.FormatPath(host, exchange, routingKey);
+                            var rtdSubTopic = SubscriptionManager.FormatPath(hostUri, exchange, routingKey);
 
                             _subMgr.Set(rtdSubTopic, str);
 
@@ -162,7 +182,7 @@ namespace RabbitRtd
 
                                     foreach (string field_in in jo.Keys)
                                     {
-                                        var rtdTopicString = SubscriptionManager.FormatPath(host, exchange, routingKey, field_in);
+                                        var rtdTopicString = SubscriptionManager.FormatPath(hostUri, exchange, routingKey, field_in);
                                         _subMgr.Set(rtdTopicString, jo[field_in]);
                                     }
                                 }
@@ -186,7 +206,9 @@ namespace RabbitRtd
             catch(Exception e)
             {
                 ESLog.Error("SubscribeRabbit", e);
+                return e.Message;
             }
+            return null;
         }
 
         // Excel calls this when it wants to cancel subscription.

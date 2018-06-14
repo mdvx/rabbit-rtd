@@ -40,10 +40,10 @@ namespace RabbitRtd
             _subByPath.Add(path, subInfo);
             return true;
         }
-        public bool Subscribe(int topicId, string host, string exchange, string routingKey, string field)
+        public bool Subscribe(int topicId, Uri hostUri, string exchange, string routingKey, string field)
         {
-            var rabbitPath = FormatPath(host, exchange, routingKey);
-            var rtdPath = FormatPath(host, exchange, routingKey, field);
+            var rabbitPath = FormatPath(hostUri, exchange, routingKey);
+            var rtdPath = FormatPath(hostUri, exchange, routingKey, field);
 
             var alreadySubscribed = false;
 
@@ -56,12 +56,12 @@ namespace RabbitRtd
             {
                 subInfo = new SubInfo(topicId, rabbitPath);
                 subInfo.AddField(field);
-                _subByRabbitPath.Add(rabbitPath, subInfo);
+                _subByRabbitPath[rabbitPath] = subInfo;
             }
 
             SubInfo rtdSubInfo = new SubInfo(topicId, rtdPath);
-            _subByTopicId.Add(topicId, rtdSubInfo);
-            _subByPath.Add(rtdPath, rtdSubInfo);
+            _subByTopicId[topicId] = rtdSubInfo;
+            _subByPath[rtdPath] = rtdSubInfo;
 
             return alreadySubscribed;
         }
@@ -73,6 +73,11 @@ namespace RabbitRtd
                 _subByTopicId.Remove(topicId);
                 _subByPath.Remove(subInfo.Path);
             }
+        }
+
+        public object GetValue(int topicId)
+        {
+            return _subByTopicId[topicId].Value;
         }
 
         public List<UpdatedValue> GetUpdatedValues()
@@ -110,10 +115,10 @@ namespace RabbitRtd
         }
 
         [DebuggerStepThrough]
-        public static string FormatPath(string host, string exchange, string routingKey, string field=null)
+        public static string FormatPath(Uri host, string exchange, string routingKey, string field=null)
         {
             return string.Format("{0}/{1}/{2}/{3}",
-                                host.ToUpperInvariant(),
+                                host.Host.ToUpperInvariant(),
                                 exchange.ToUpperInvariant(),
                                 routingKey.ToUpperInvariant(),
                                 field);
