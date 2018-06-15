@@ -234,12 +234,13 @@ namespace RabbitRtd
 
             object[,] data = new object[2, topicCount];
 
-            for (int i = 0; i < topicCount; ++i)
+            int i = 0;
+            foreach(var info in updates)
             {
-                SubscriptionManager.UpdatedValue info = updates[i];
-
                 data[0, i] = info.TopicId;
                 data[1, i] = info.Value;
+
+                i++;
             }
 
             return data;
