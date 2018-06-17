@@ -49,7 +49,7 @@ namespace RabbitRtd
                 if (!_isExcelNotifiedOfUpdates)
                 {
                     lock (_notifyLock)                     // do this before calling updateNotify
-                        _isExcelNotifiedOfUpdates = true;  // so next update can reset even if excel has called RefreshData, yet
+                        _isExcelNotifiedOfUpdates = true;  // so next update will reset this to FALSE even if excel has NOT called RefreshData
 
                     _callback.UpdateNotify();
                 }
