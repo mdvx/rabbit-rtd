@@ -60,11 +60,7 @@ namespace TestApp
                     channel.ExchangeDeclare(exchange: exchange, type: "topic", autoDelete: true);
                     //channel.BasicQos = 100;
 
-                    var d = random.NextDouble();
-                    var e = random.Next(5);
-                    var r = d * Math.Pow(10,e);  // r should fall between 0 and 4*100,000
-
-                    var padding = new String('x', (int)r);
+                    var padding = new String('x', 200);
 
                     int l = 0;
                     while (!cts.IsCancellationRequested)
@@ -81,10 +77,14 @@ namespace TestApp
                             body: Encoding.ASCII.GetBytes(str));
 
                         if (l % 4999 == 0) {  // 4999 is prime
-                            Logger.Info("sending " + str.Substring(0,Math.Min(75,str.Length)));
+                            Logger.Debug("sending " + str.Substring(0,Math.Min(75,str.Length)));
                             Console.Write("{0}\r", l);
 
-                            padding = new String('x', random.Next(2000));
+                            var d = random.NextDouble();
+                            var e = random.Next(5);
+                            var r = d * Math.Pow(10, e);  // r should fall between 0 and 4*100,000
+
+                            padding = new String('x', (int)r);
                         }
                     }
 
