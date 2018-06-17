@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
+using NLog;
 using RabbitMQ.Client;
 using RabbitRtd;
 
@@ -10,6 +11,8 @@ namespace TestApp
 {
     class Program : IRtdUpdateEvent
     {
+        private static readonly ILogger Logger = LogManager.GetCurrentClassLogger();
+
         [STAThread]
         public static void Main (string[] args)
         {
@@ -23,6 +26,7 @@ namespace TestApp
 
         IRtdServer _rtd;
         bool consoleAppTest = false;   // false: test with excel, true: test with console app
+        Random random = new Random();
 
         void Run ()
         {
@@ -56,14 +60,18 @@ namespace TestApp
                     channel.ExchangeDeclare(exchange: exchange, type: "topic", autoDelete: true);
                     //channel.BasicQos = 100;
 
-                    var padding = new String('x', 20);
+                    var d = random.NextDouble();
+                    var e = random.Next(5);
+                    var r = d * Math.Pow(10,e);  // r should fall between 0 and 4*100,000
+
+                    var padding = new String('x', (int)r);
 
                     int l = 0;
                     while (!cts.IsCancellationRequested)
                     {
                         Interlocked.Increment(ref l);
 
-                        var str = json ? String.Format("{{ \"rk\": \"{0}\", \"{1}\": {2} }}", routingKey, field, l)   // alternate between JSON
+                        var str = json ? String.Format("{{ \"rk\": \"{0}\", \"{1}\": {2}, \"padding\": \"{3}\"}}", routingKey, field, l,padding)   // alternate between JSON
                                        : String.Format("{0} => {1}: {2} {3}", routingKey, field, l, padding);         // not JSON
 
                         channel.BasicPublish(exchange: exchange,
@@ -72,10 +80,11 @@ namespace TestApp
                             mandatory: true,
                             body: Encoding.ASCII.GetBytes(str));
 
-                        if (l % 5000 == 0)
-                            Console.WriteLine("sending " + str);
+                        if (l % 4999 == 0) {  // 4999 is prime
+                            Console.WriteLine("sending " + str.Substring(0,Math.Min(40,str.Length)));
 
-                        //Thread.Sleep(1);
+                            padding = new String('x', random.Next(2000));
+                        }
                     }
 
                     channel.Close();
@@ -124,7 +133,7 @@ namespace TestApp
         
         void IRtdUpdateEvent.Disconnect ()
         {
-            Console.WriteLine("Disconnect called.");
+            Logger.Debug("Disconnect called.");
         }
     }
 }

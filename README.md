@@ -32,34 +32,36 @@ Examples:
    
 ### $EXCHANGE
 Format:
-   [type:][name][[[:durability]:auto-delete]:arguments]
+  [name[:type[:durability[:auto-delete[:arguments]]]]]
    
 type:
-* amq.direct     (default)
-* amq.fanout
-* amq.topic
-* amq.match
+* direct     (default)
+* fanout
+* topic
+* match
    
 name: Exchange name
 * "" empty string    (default)
 * my.exchange.name
    
 durability:  exchanges survive broker restart
-* true      (default)
-* false     
+* true      
+* false     (default)
    
 auto-delete:  exchange is deleted when last queue is unbound from it
 * true      
 * false     (default)
    
 arguments:  optional, used by plugins and broker-specific features
+* json string
    
 Examples:
-   my.exchange::false:true
-   amq.topic:my.exchange
-   EXCHANGE                      
+   my.exchange:topic:false:true
+   :fanout
+   EXCHANGE       
+   my.exchange:topic:false:true:{"my.arg":42}
 
-### $QUEUE
+### $QUEUE // TODO
 
 Format
    name[:durable[:exclusive[:auto-delete[:arguments]]]
@@ -88,6 +90,8 @@ Format:
 
 ### $FIELD
 TBA: For use with JSON messages
+
+## Finally
 
 EXCHANGE should be declared as type: "topic", autoDelete: true in the publisher
 

@@ -11,16 +11,18 @@ namespace RabbitRtd
     {
         public static readonly string UninitializedValue = "<?>";
 
-        readonly Dictionary<string, SubInfo> _subByPath;
+        readonly Dictionary<string, SubInfo> _subByRtdPath;
         readonly Dictionary<string, SubInfo> _subByRabbitPath;
         readonly Dictionary<int, SubInfo> _subByTopicId;
         readonly Dictionary<int, SubInfo> _dirtyMap;
         readonly Action _onDirty;
+        public long UpdateCount = 0;
+        public long DistinctUpdateCount = 0;
 
         public SubscriptionManager(Action onDirty)
         {
             _subByRabbitPath = new Dictionary<string, SubInfo>();
-            _subByPath = new Dictionary<string, SubInfo>();
+            _subByRtdPath = new Dictionary<string, SubInfo>();
             _subByTopicId = new Dictionary<int, SubInfo>();
             _dirtyMap = new Dictionary<int, SubInfo>();
             _onDirty = onDirty;
@@ -37,7 +39,7 @@ namespace RabbitRtd
             string path = topic;
             var subInfo = new SubInfo(topicId, path);
             _subByTopicId.Add(topicId, subInfo);
-            _subByPath.Add(path, subInfo);
+            _subByRtdPath.Add(path, subInfo);
             return true;
         }
         public bool Subscribe(int topicId, Uri hostUri, string exchange, string routingKey, string field)
@@ -61,7 +63,7 @@ namespace RabbitRtd
 
             SubInfo rtdSubInfo = new SubInfo(topicId, rtdPath);
             _subByTopicId[topicId] = rtdSubInfo;
-            _subByPath[rtdPath] = rtdSubInfo;
+            _subByRtdPath[rtdPath] = rtdSubInfo;
 
             return alreadySubscribed;
         }
@@ -71,7 +73,7 @@ namespace RabbitRtd
             if (_subByTopicId.TryGetValue(topicId, out SubInfo subInfo))
             {
                 _subByTopicId.Remove(topicId);
-                _subByPath.Remove(subInfo.Path);
+                _subByRtdPath.Remove(subInfo.Path);
             }
         }
 
@@ -97,17 +99,19 @@ namespace RabbitRtd
 
         public bool Set(string path, object value)
         {
-            if (_subByPath.TryGetValue(path, out SubInfo subInfo))
+            if (_subByRtdPath.TryGetValue(path, out SubInfo subInfo))
             {
+                UpdateCount++;
+
                 if (value != subInfo.Value)
                 {
                     subInfo.Value = value;
                     lock (_dirtyMap)
                     {
                         _dirtyMap[subInfo.TopicId] = subInfo;
-
                         _onDirty?.Invoke();
                     }
+                    DistinctUpdateCount++;
                     return true;
                 }
             }
@@ -151,6 +155,10 @@ namespace RabbitRtd
             public void AddField(string field)
             {
                 Fields.Add(field);
+            }
+            public override string ToString()
+            {
+                return string.Format("SubInfo topic={1} path={0} value={2}", TopicId, Path,Value);
             }
         }
         public struct UpdatedValue
