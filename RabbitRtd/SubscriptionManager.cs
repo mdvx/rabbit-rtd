@@ -16,8 +16,8 @@ namespace RabbitRtd
         readonly Dictionary<int, SubInfo> _subByTopicId;
         readonly Dictionary<int, SubInfo> _dirtyMap;
         readonly Action _onDirty;
-        public long UpdateCount = 0;
-        public long DistinctUpdateCount = 0;
+        public long UpdateCount = 0;  // Number of times Set was called for Subscribed topics
+        public long DistinctUpdateCount = 0;  // Number of times, the value Set changed
 
         public SubscriptionManager(Action onDirty)
         {
@@ -134,16 +134,7 @@ namespace RabbitRtd
             public string Path { get; private set; }
             public HashSet<string> Fields { get; private set; }
 
-            private object _value;
-
-            public object Value
-            {
-                get { return _value; }
-                set
-                {
-                    _value = value;
-                }
-            }
+            public object Value { get; set; }
 
             public SubInfo(int topicId, string path)
             {
@@ -161,12 +152,12 @@ namespace RabbitRtd
                 return string.Format("SubInfo topic={1} path={0} value={2}", TopicId, Path,Value);
             }
         }
-        public struct UpdatedValue
+        public struct UpdatedValue  // Immutable
         {
             public int TopicId { get; private set; }
             public object Value { get; private set; }
 
-            public UpdatedValue(int topicId, object value) : this()
+            public UpdatedValue(int topicId, object value)
             {
                 TopicId = topicId;
 
