@@ -68,7 +68,7 @@ namespace TestApp
                         Interlocked.Increment(ref l);
 
                         var str = json ? String.Format("{{ \"rk\": \"{0}\", \"{1}\": {2}, \"padding\": \"{3}\"}}", routingKey, field, l,padding)   // alternate between JSON
-                                       : String.Format("{0} => {1}: {2} {3}", routingKey, field, l, padding);         // not JSON
+                                       : String.Format($"{routingKey} => {field}: {l} {padding}");         // not JSON
 
                         channel.BasicPublish(exchange: exchange,
                             routingKey: routingKey,
@@ -78,7 +78,7 @@ namespace TestApp
 
                         if (l % 4999 == 0) {  // 4999 is prime
                             Logger.Debug("sending " + str.Substring(0,Math.Min(75,str.Length)));
-                            Console.Write("{0}\r", l);
+                            Console.Write($"{l}\r");
 
                             var d = random.NextDouble();
                             var e = random.Next(5);
@@ -100,7 +100,7 @@ namespace TestApp
         int _topic;
         void Sub (string exchange, string routingKey, string field)
         {
-            Console.WriteLine("Subscribing: topic={0}, exchange={1}, routingKey={2}, field={3}", _topic, exchange, routingKey, field);
+            Console.WriteLine($"Subscribing: topic={_topic}, exchange={exchange}, routingKey={routingKey}, field={field}");
             
             var a = new[]
                     {
@@ -126,7 +126,7 @@ namespace TestApp
 
             for (int i = 0; i < topicCount; ++i)
             {
-                Console.WriteLine("{0}\t{1}", values.GetValue(0, i), values.GetValue(1, i));
+                Console.WriteLine( values.GetValue(0, i).ToString() + '\t' + values.GetValue(1, i).ToString());
             }
         }
 

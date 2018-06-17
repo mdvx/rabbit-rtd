@@ -79,6 +79,8 @@ namespace RabbitRtd
         // String array contains any aux data user provides to RTD macro.
         object IRtdServer.ConnectData (int topicId, ref Array strings, ref bool newValues)
         {
+            newValues = true;
+
             if (strings.Length == 1)
             {
                 switch(strings.GetValue(0).ToString().ToUpperInvariant())
@@ -96,6 +98,7 @@ namespace RabbitRtd
                         _refreshesTopic = topicId;
                         return _refreshes;
                 }
+                return $"Expected: {START_TIME} {UPDATES} {DISTINCT} {REFRESHES}";
             }
             else if (strings.Length > 2)
             {
@@ -110,8 +113,6 @@ namespace RabbitRtd
 
                 return PreSubscribeRabbit(topicId, host, exchange, queue, routingKey, field);
             }
-
-            newValues = false;
 
             return "Expected: host, exchange, routingKey, field";
         }

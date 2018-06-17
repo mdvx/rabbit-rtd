@@ -149,7 +149,7 @@ namespace RabbitRtd
             }
             public override string ToString()
             {
-                return string.Format("SubInfo topic={1} path={0} value={2}", TopicId, Path,Value);
+                return $"SubInfo topic={TopicId} path={Path} value={Value}";
             }
         }
         public struct UpdatedValue  // Immutable
