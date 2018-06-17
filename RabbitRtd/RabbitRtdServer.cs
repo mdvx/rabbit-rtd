@@ -36,12 +36,12 @@ namespace RabbitRtd
         private long _refreshes;
         private int _updatesTopic, _refreshesTopic, _distinctUpdatesTopic, _startTimeTopic;
 
-        private const string CLOCK = "CLOCK";
-        private const string LAST_RTD = "LAST_RTD";
-        private const string START_TIME = "START_TIME";
-        private const string UPDATES = "UPDATES";
-        private const string REFRESHES = "REFRESHES";
-        private const string DISTINCT = "DISTINCT";
+        private const string CLOCK = "RTD_CLOCK";
+        private const string LAST_RTD = "RTD_LAST";
+        private const string START_TIME = "RTD_START_TIME";
+        private const string UPDATES = "RTD_UPDATES";
+        private const string REFRESHES = "RTD_REFRESHES";
+        private const string DISTINCT = "RTD_DISTINCT";
 
         public RabbitRtdServer ()
         {
@@ -62,16 +62,6 @@ namespace RabbitRtd
             _callback = callback;
             _startTime = DateTime.Now.ToLocalTime();
 
-            // We will throttle out updates so that Excel can keep up.
-            // It is also important to invoke the Excel callback notify
-            // function from the COM thread. System.Windows.Threading' 
-            // DispatcherTimer will use COM thread's message pump.
-            //DispatcherTimer dispatcherTimer = new DispatcherTimer();
-            //_timer = dispatcherTimer;
-            //_timer.Interval = TimeSpan.FromMilliseconds(33); // this needs to be very frequent
-            //_timer.Tick += TimerElapsed;
-            //_timer.Start();
-
             lock (_notifyLock)
                 _isExcelNotifiedOfUpdates = false;
 
@@ -81,17 +71,7 @@ namespace RabbitRtd
         // Excel calls this when it wants to shut down RTD server.
         void IRtdServer.ServerTerminate ()
         {
-            //if (_timer != null)
-            //{
-            //    _timer.Stop();
-            //    _timer = null;
-            //}
-
-            //lock(_subMgr)
-            //{
-            //    _callback.UpdateNotify();
-            //}
-            //Thread.Sleep(2000);
+            //_subMgr.UnsubscribeAll();
         }
 
         // Excel calls this when it wants to make a new topic subscription.
@@ -101,7 +81,7 @@ namespace RabbitRtd
         {
             if (strings.Length == 1)
             {
-                switch(strings.GetValue(0))
+                switch(strings.GetValue(0).ToString().ToUpperInvariant())
                 {
                     case START_TIME:
                         _startTimeTopic = topicId;
@@ -258,7 +238,7 @@ namespace RabbitRtd
         // Excel calls this every once in a while.
         int IRtdServer.Heartbeat ()
         {
-            return 1;
+            return 1;  // Just ACK this
         }
 
         // Excel calls this to get changed values. 
@@ -274,7 +254,7 @@ namespace RabbitRtd
             topicCount = updates.Count + STATS_COUNT;
 
             object[,] data = new object[2, topicCount];
-            data[0, 0] = _startTimeTopic;
+            data[0, 0] = _startTimeTopic;  // TODO: check stats are subscribed
             data[1, 0] = _startTime;
             data[0, 1] = _updatesTopic;
             data[1, 1] = _subMgr.UpdateCount;
@@ -295,28 +275,6 @@ namespace RabbitRtd
             return data;
         }
         
-        // Helper function which checks if new data is available and,
-        // if so, notifies Excel about it.
-        //private void TimerElapsed (object sender, EventArgs e)
-        //{
-        //    bool wasDataUpdated;
-
-        //    lock (_subMgr)
-        //    {
-        //        wasDataUpdated = _subMgr.IsDirty;
-        //    }
-
-        //    if (wasDataUpdated)
-        //    {
-        //        // Notify Excel that Market Data has been updated
-        //        _subMgr.Set(LAST_RTD, DateTime.Now.ToLocalTime());
-        //        _callback.UpdateNotify();
-        //    }
-
-        //    if (_subMgr.Set(CLOCK, DateTime.Now.ToLocalTime()))
-        //        _callback.UpdateNotify();
-        //}
-
         List<SubscriptionManager.UpdatedValue> GetUpdatedValues ()
         {
             lock (_subMgr)
