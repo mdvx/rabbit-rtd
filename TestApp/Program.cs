@@ -81,18 +81,19 @@ namespace TestApp
                             body: Encoding.ASCII.GetBytes(str));
 
                         if (l % 4999 == 0) {  // 4999 is prime
-                            Console.WriteLine("sending " + str.Substring(0,Math.Min(40,str.Length)));
+                            Logger.Info("sending " + str.Substring(0,Math.Min(75,str.Length)));
+                            Console.Write("{0}\r", l);
 
                             padding = new String('x', random.Next(2000));
                         }
                     }
 
-                    channel.Close();
+                    channel.Close(); 
                 }
             }
             catch (Exception e)
             {
-                ESLog.Error("SubscribeRabbit", e);
+                Logger.Error(e,"SubscribeRabbit");
             }
         }
 
