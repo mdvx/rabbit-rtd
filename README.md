@@ -1,6 +1,7 @@
 # rabbit-rtd
 Excel RTD server sourcing data from Rabbit-MQ
 
+![Excel screenshot](doc/ice_video.gif)
 
 ## Installation
 1. Clone the repository and go to its folder.
@@ -12,6 +13,8 @@ Excel RTD server sourcing data from Rabbit-MQ
 3. Register the COM server by running the following script in admin command prompt:
    
    `register.cmd`
+
+4. Install RabbitMQ https://www.rabbitmq.com/download.html with all default options, for now.
 
 ## Usage
 
@@ -61,13 +64,15 @@ Examples:
    EXCHANGE       
    my.exchange:topic:false:true:{"my.arg":42}
 
-### $QUEUE // TODO
+### $QUEUE 
 
 Format
    name[:durable[:exclusive[:auto-delete[:arguments]]]
    
-name:
+name: This is supported, the name of the queue
    
+The following are TODO
+
 durable: (the queue will survive a broker restart)
 * true (default)
 * false
@@ -93,7 +98,6 @@ TBA: For use with JSON messages
 
 ## Finally
 
-EXCHANGE should be declared as type: "topic", autoDelete: true in the publisher
+Have Fun!
 
-![Excel screenshot](doc/ice_video.gif)
 
