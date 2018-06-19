@@ -7,21 +7,21 @@ using System.Threading.Tasks;
 
 namespace RabbitRtd
 {
-    class RabbitExchange
+    class RabbitQueue
     {
         public readonly string Name;
-        public readonly string Type;
         public readonly bool Durable;
+        public readonly bool Exclusive;
         public readonly bool AutoDelete;
         public readonly IDictionary<string, object> Arguments;
 
-        public RabbitExchange(string exchangeString)
+        public RabbitQueue(string str)
         {
             //  [name[:type[:durability[:auto-delete[:arguments]]]]]
-            var arr = exchangeString.Split(':');
+            var arr = str.Split(':');
             Name = arr.Length > 0 ? arr[0] : string.Empty;
-            Type = arr.Length > 1 ? arr[1] : "direct";
-            Durable = arr.Length > 2 ? Boolean.Parse(arr[2]) : false;
+            Durable = arr.Length > 1 ? Boolean.Parse(arr[1]) : true;
+            Exclusive = arr.Length > 2 ? Boolean.Parse(arr[2]) : false;
             AutoDelete = arr.Length > 3 ? Boolean.Parse(arr[3]) : false;
             Arguments = arr.Length > 4 ? JObject.Parse(arr[4]).ToObject<Dictionary<string, object>>() : null;
         }

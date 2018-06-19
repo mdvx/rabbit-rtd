@@ -117,7 +117,7 @@ namespace RabbitRtd
             return "Expected: host, exchange, routingKey, field";
         }
 
-        private object PreSubscribeRabbit(int topicId, string host, string exchangeString, string queue, string routingKey, string field)
+        private object PreSubscribeRabbit(int topicId, string host, string exchangeString, string queueString, string routingKey, string field)
         {
             if (!hostUriMap.TryGetValue(host, out Uri hostUri))
             {
@@ -140,18 +140,19 @@ namespace RabbitRtd
                     hostUriMap[host] = hostUri;
             }
             RabbitExchange rabbitExchange = new RabbitExchange(exchangeString);
+            RabbitQueue rabbitQueue = new RabbitQueue(queueString);
 
             lock (_subMgr)
             {
-                if (_subMgr.Subscribe(topicId, hostUri, rabbitExchange.Exchange, routingKey, field))
+                if (_subMgr.Subscribe(topicId, hostUri, rabbitExchange.Name, routingKey, field))
                     return _subMgr.GetValue(topicId); // already subscribed 
             }
 
             CancellationTokenSource cts = new CancellationTokenSource();
-            Task.Run(() => SubscribeRabbit(topicId, hostUri, rabbitExchange, queue, routingKey, field, cts.Token));
+            Task.Run(() => SubscribeRabbit(topicId, hostUri, rabbitExchange, rabbitQueue, routingKey, field, cts.Token));
             return SubscriptionManager.UninitializedValue;
         }
-        private void SubscribeRabbit(int topicId, Uri hostUri, RabbitExchange rabbitExchange, string queue , string routingKey, string field, CancellationToken cts)
+        private void SubscribeRabbit(int topicId, Uri hostUri, RabbitExchange exchange, RabbitQueue queue , string routingKey, string field, CancellationToken cts)
         {
             try
             {
@@ -169,15 +170,24 @@ namespace RabbitRtd
                     //channel.BasicQos = 100;
 
                     channel.ExchangeDeclare( 
-                        rabbitExchange.Exchange,
-                        rabbitExchange.Type, 
-                        rabbitExchange.Durable,
-                        rabbitExchange.AutoDelete,
-                        rabbitExchange.Arguments);
+                        exchange.Name,
+                        exchange.Type, 
+                        exchange.Durable,
+                        exchange.AutoDelete,
+                        exchange.Arguments);
 
-                    var queueName = string.IsNullOrWhiteSpace(queue) ? channel.QueueDeclare().QueueName : queue; //  queue ?? 
+                    string queueName;
+                    if (string.IsNullOrWhiteSpace(queue.Name))
+                    {
+                        queueName = channel.QueueDeclare().QueueName; 
+                    }
+                    else
+                    {
+                        queueName = channel.QueueDeclare( queue.Name, queue.Durable, queue.Exclusive, queue.AutoDelete, queue.Arguments);
+                    }
+
                     channel.QueueBind(queue: queueName,
-                                      exchange: rabbitExchange.Exchange,
+                                      exchange: exchange.Name,
                                       routingKey: routingKey);
 
                     var consumer = new EventingBasicConsumer(channel);
@@ -185,7 +195,7 @@ namespace RabbitRtd
                     {
                         if (ea.RoutingKey.Equals(routingKey))
                         {
-                            var rtdSubTopic = SubscriptionManager.FormatPath(hostUri, rabbitExchange.Exchange, routingKey);
+                            var rtdSubTopic = SubscriptionManager.FormatPath(hostUri, exchange.Name, routingKey);
 
                             try
                             {
@@ -199,7 +209,7 @@ namespace RabbitRtd
 
                                     foreach (string field_in in jo.Keys)
                                     {
-                                        var rtdTopicString = SubscriptionManager.FormatPath(hostUri, rabbitExchange.Exchange, routingKey, field_in);
+                                        var rtdTopicString = SubscriptionManager.FormatPath(hostUri, exchange.Name, routingKey, field_in);
                                         _subMgr.Set(rtdTopicString, jo[field_in]);
                                     }
                                 }
