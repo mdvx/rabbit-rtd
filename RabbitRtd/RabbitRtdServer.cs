@@ -27,7 +27,7 @@ namespace RabbitRtd
         private IRtdUpdateEvent _callback;
         private bool _isExcelNotifiedOfUpdates = false;
         private object _notifyLock = new object();
-        private readonly SubscriptionManager _subMgr;
+        private SubscriptionManager _subMgr;
         private Dictionary<string, Uri> hostUriMap = new Dictionary<string, Uri>();  // quick lookup of existing host strings
         private Dictionary<Uri, IConnection> _connections = new Dictionary<Uri, IConnection>();
 
@@ -45,25 +45,26 @@ namespace RabbitRtd
 
         public RabbitRtdServer ()
         {
-            _subMgr = new SubscriptionManager( () => {
-                if (!_isExcelNotifiedOfUpdates)
-                {
-                    lock (_notifyLock)                     // do this before calling updateNotify
-                        _isExcelNotifiedOfUpdates = true;  // so next update will reset this to FALSE even if excel has NOT called RefreshData
-
-                    _callback.UpdateNotify();
-                }
-            });
         }
         // Excel calls this. It's an entry point. It passes us a callback
         // structure which we save for later.
         int IRtdServer.ServerStart (IRtdUpdateEvent callback)
         {
+            _isExcelNotifiedOfUpdates = false;
             _callback = callback;
-            _startTime = DateTime.Now.ToLocalTime();
 
-            lock (_notifyLock)
-                _isExcelNotifiedOfUpdates = false;
+            _subMgr = new SubscriptionManager(() => {
+                if (!_isExcelNotifiedOfUpdates)
+                {
+                    lock (_notifyLock)                     // do this before calling updateNotify
+                        _isExcelNotifiedOfUpdates = true;  // so next update will reset this to FALSE even if excel has NOT called RefreshData
+
+                    if (_callback != null)
+                        _callback.UpdateNotify();
+                }
+            });
+
+            _startTime = DateTime.Now.ToLocalTime();
 
             return 1;
         }
@@ -72,7 +73,7 @@ namespace RabbitRtd
         void IRtdServer.ServerTerminate ()
         {
             //_subMgr.UnsubscribeAll();
-        }
+            _callback = null;        }
 
         // Excel calls this when it wants to make a new topic subscription.
         // topicId becomes the key representing the subscription.
@@ -126,9 +127,9 @@ namespace RabbitRtd
                 UriBuilder b1 = new UriBuilder(host);
                 UriBuilder b2 = new UriBuilder()
                 {
-                    Scheme = b1.Scheme == "http" ? "amqp" : b1.Scheme,  // TODO: FIX
+                    Scheme = b1.Scheme == "http" ? "amqp" : b1.Scheme,  // FIX: maybe it was http
                     Host = b1.Host ?? "localhost",
-                    Port = b1.Port == 80 ? 5672 : b1.Port,  // TODO: FIX
+                    Port = b1.Port == 80 ? 5672 : b1.Port,  // FIX: maybe it was 80
                     UserName = b1.UserName ?? "guest",
                     Password = b1.Password ?? "guest",
                     Path = b1.Path
@@ -249,7 +250,10 @@ namespace RabbitRtd
         // Excel calls this every once in a while.
         int IRtdServer.Heartbeat ()
         {
-            return 1;  // Just ACK this
+            lock (_notifyLock)  // just in case it gets stuck
+                _isExcelNotifiedOfUpdates = false;
+
+            return 1;
         }
 
         // Excel calls this to get changed values. 
@@ -258,8 +262,6 @@ namespace RabbitRtd
             _refreshes++;
 
             var updates = GetUpdatedValues();
-            lock (_notifyLock)
-                _isExcelNotifiedOfUpdates = false;
 
             const int STATS_COUNT = 4;
             topicCount = updates.Count + STATS_COUNT;
@@ -283,7 +285,11 @@ namespace RabbitRtd
                 i++;
             }
 
-            return data;
+            lock (_notifyLock)
+            {
+                _isExcelNotifiedOfUpdates = false;
+                return data;
+            }
         }
         
         List<SubscriptionManager.UpdatedValue> GetUpdatedValues ()

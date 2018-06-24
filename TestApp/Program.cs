@@ -19,7 +19,7 @@ namespace TestApp
             var me = new Program();
 
             IRtdUpdateEvent me2 = me;
-            me2.HeartbeatInterval = 100;
+            //me2.HeartbeatInterval = 15;  // is this seconds or milliseconds?
             
             me.Run();
         }

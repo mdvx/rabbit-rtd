@@ -45,7 +45,7 @@ namespace RabbitRtd
         public bool Subscribe(int topicId, Uri hostUri, string exchange, string routingKey, string field)
         {
             var rabbitPath = FormatPath(hostUri, exchange, routingKey);
-            var rtdPath = FormatPath(hostUri, exchange, routingKey, field);
+            var topicPath = FormatPath(hostUri, exchange, routingKey, field);
 
             var alreadySubscribed = false;
 
@@ -61,9 +61,9 @@ namespace RabbitRtd
                 _subByRabbitPath[rabbitPath] = subInfo;
             }
 
-            SubInfo rtdSubInfo = new SubInfo(topicId, rtdPath);
+            SubInfo rtdSubInfo = new SubInfo(topicId, topicPath);
             _subByTopicId[topicId] = rtdSubInfo;
-            _subByRtdPath[rtdPath] = rtdSubInfo;
+            _subByRtdPath[topicPath] = rtdSubInfo;
 
             return alreadySubscribed;
         }
@@ -79,7 +79,7 @@ namespace RabbitRtd
 
         public object GetValue(int topicId)
         {
-            return _subByTopicId[topicId].Value;
+            return _subByTopicId[topicId]?.Value;
         }
 
         public List<UpdatedValue> GetUpdatedValues()
