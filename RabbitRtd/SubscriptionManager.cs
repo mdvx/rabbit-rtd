@@ -105,7 +105,17 @@ namespace RabbitRtd
 
                 if (value != subInfo.Value)
                 {
-                    subInfo.Value = value;
+                    if (value is string)
+                    {
+                        var str = value as string;
+                        if (str.Length > 32767)
+                            subInfo.Value = $"Error: string too long for Excel ({str.Length} > 32767)";
+                        else
+                            subInfo.Value = value;
+                    }
+                    else
+                        subInfo.Value = value;
+
                     lock (_dirtyMap)
                     {
                         _dirtyMap[subInfo.TopicId] = subInfo;
