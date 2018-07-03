@@ -7,7 +7,7 @@ using NLog;
 using RabbitMQ.Client;
 using RabbitRtd;
 
-namespace TestApp
+namespace RabbitRtd
 {
     class Program : IRtdUpdateEvent
     {

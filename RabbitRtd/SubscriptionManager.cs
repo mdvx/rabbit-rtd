@@ -44,12 +44,12 @@ namespace RabbitRtd
         }
         public bool Subscribe(int topicId, Uri hostUri, string exchange, string routingKey, string field)
         {
-            var rabbitPath = FormatPath(hostUri, exchange, routingKey);
             var topicPath = FormatPath(hostUri, exchange, routingKey, field);
+            var rabbitPath = FormatPath(hostUri, exchange, routingKey);
 
             var alreadySubscribed = false;
 
-            if (_subByRabbitPath.TryGetValue(rabbitPath, out SubInfo subInfo))
+            if (_subByTopicId.TryGetValue(topicId, out SubInfo subInfo))
             {
                 alreadySubscribed = true;
                 subInfo.AddField(field);
@@ -58,12 +58,11 @@ namespace RabbitRtd
             {
                 subInfo = new SubInfo(topicId, rabbitPath);
                 subInfo.AddField(field);
-                _subByRabbitPath[rabbitPath] = subInfo;
+                _subByTopicId[topicId] = subInfo;
             }
 
-            SubInfo rtdSubInfo = new SubInfo(topicId, topicPath);
-            _subByTopicId[topicId] = rtdSubInfo;
-            _subByRtdPath[topicPath] = rtdSubInfo;
+            _subByRabbitPath[rabbitPath] = subInfo;
+            _subByRtdPath[topicPath] = subInfo;
 
             return alreadySubscribed;
         }
@@ -146,12 +145,15 @@ namespace RabbitRtd
 
             public object Value { get; set; }
 
-            public SubInfo(int topicId, string path)
+            public SubInfo(int topicId, string path, object value)
             {
                 TopicId = topicId;
                 Path = path;
-                Value = UninitializedValue;
+                Value = value;
                 Fields = new HashSet<string>();
+            }
+            public SubInfo(int topicId, string path) : this(topicId, path, UninitializedValue)
+            {
             }
             public void AddField(string field)
             {
